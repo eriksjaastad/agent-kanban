@@ -1,0 +1,97 @@
+.shadow-panel h2 {
+  margin-bottom: 1rem;
+}
+
+.shadow-loading,
+.shadow-unavailable {
+  color: var(--text-secondary, #888);
+  padding: 1rem 0;
+  font-size: 0.875rem;
+}
+
+/* Summary stats */
+.shadow-summary {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.shadow-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 80px;
+  padding: 0.75rem 0.5rem;
+  background: var(--bg-primary, #111);
+  border-radius: 6px;
+}
+
+.shadow-stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary, #eee);
+}
+
+.shadow-stat-value.highlight-good {
+  color: #3fb950;
+}
+
+.shadow-stat-label {
+  font-size: 0.65rem;
+  color: var(--text-secondary, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.15rem;
+}
+
+/* Model breakdown */
+.shadow-breakdown {
+  margin-top: 0.75rem;
+}
+
+.shadow-breakdown h3 {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary, #888);
+  margin: 0 0 0.5rem 0;
+}
+
+.shadow-row {
+  display: flex;
+  align-items: center;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-color, #222);
+  font-size: 0.8rem;
+}
+
+.shadow-row:last-child {
+  border-bottom: none;
+}
+
+.shadow-row-name {
+  flex: 1;
+  color: var(--text-primary, #eee);
+}
+
+.shadow-row-tokens {
+  color: var(--text-secondary, #888);
+  margin-right: 1rem;
+  font-size: 0.75rem;
+}
+
+.shadow-row-cost {
+  font-weight: 600;
+  color: var(--text-primary, #eee);
+  min-width: 60px;
+  text-align: right;
+}
+
+.shadow-period {
+  margin-top: 0.75rem;
+  font-size: 0.7rem;
+  color: var(--text-secondary, #666);
+  text-align: center;
+}

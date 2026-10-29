@@ -1,0 +1,145 @@
+.submissions-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.submissions-empty {
+  text-align: center;
+  padding: var(--space-xl);
+  color: var(--muted);
+}
+
+.submissions-empty p {
+  margin: var(--space-md) 0;
+}
+
+.submissions-empty-hint {
+  font-size: 0.9rem;
+}
+
+.submissions-empty-hint a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.submissions-empty-hint a:hover {
+  text-decoration: underline;
+}
+
+.submissions-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.submission-group {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: var(--space-lg);
+}
+
+.submission-job-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--border);
+}
+
+.submission-job-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  flex: 1;
+}
+
+.submission-company {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin: 0;
+}
+
+.submission-job-title {
+  font-weight: 500;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 1rem;
+}
+
+.submission-job-title:hover {
+  text-decoration: underline;
+}
+
+.submission-job-location {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.submission-job-category {
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.submission-job-dismissed {
+  background: var(--danger-soft);
+  color: var(--danger);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.submission-count {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.submissions-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.submission-item {
+  padding: var(--space-md);
+  background: var(--bg);
+  border-radius: 6px;
+  border-left: 3px solid var(--accent);
+}
+
+.submission-date {
+  font-weight: 500;
+  color: #e0e0e0;
+  margin-bottom: var(--space-xs);
+}
+
+.submission-notes {
+  color: var(--text);
+  margin: var(--space-xs) 0;
+  line-height: 1.5;
+}
+
+.submission-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.submission-attachment {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-family: 'Courier New', monospace;
+}

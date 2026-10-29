@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    LaunchAgent TEMPLATE: dashboard health watchdog, runs every 5 minutes.
+
+    Restarts the project-tracker dashboard when it goes alive-but-broken (SQLite
+    connection rot → HTTP 500), which KeepAlive cannot detect. Keeps the 7am
+    alert digest from degrading.
+
+    @PT_HOME@ is substituted at install time by
+    scripts/launchd/install-dashboard-watchdog.sh — launchd cannot expand $HOME
+    or parse placeholders, so do NOT copy this .plist.in directly.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.project-tracker.dashboard-watchdog</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>@PT_HOME@/scripts/dashboard_watchdog.sh</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>300</integer>
+
+    <key>StandardOutPath</key>
+    <string>@PT_HOME@/logs/dashboard_watchdog.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>@PT_HOME@/logs/dashboard_watchdog.stderr.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>@PT_HOME@</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>

@@ -1,0 +1,30 @@
+[project]
+name = "project-tracker"
+version = "0.0.0"
+description = "Local dashboard and CLI for tracking projects, Kanban work, graph relationships, and agentic workflow signals across the projects root."
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.0",
+    "croniter>=2.0",
+    "fastapi>=0.115",
+    "httpx>=0.27",
+    "jinja2>=3.1",
+    "numpy>=1.26",
+    "python-dateutil>=2.9",
+    "python-multipart>=0.0.9",
+    "pyyaml>=6.0",
+    "rich>=13.9",
+    "send2trash>=1.8",
+    "uvicorn>=0.34",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=9.0",
+    "hypothesis>=6.0",
+    "playwright>=1.48",
+    "pytest-playwright>=0.6.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

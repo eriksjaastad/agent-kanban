@@ -1,0 +1,207 @@
+.kanban-board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  color: #e0e0e0;
+  padding: var(--space-xl);
+}
+
+.kanban-board-loading {
+  min-height: 20rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  padding: var(--space-xl);
+}
+
+.kanban-board-loading-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+  color: var(--muted);
+}
+
+.kanban-board-skeleton {
+  display: flex;
+  gap: var(--space-xl);
+  overflow-x: auto;
+}
+
+.column-skeleton {
+  min-width: 300px;
+  background: var(--surface);
+  border-radius: 8px;
+  padding: var(--space-md);
+}
+
+.column-skeleton-header {
+  margin-bottom: var(--space-md);
+}
+
+.column-skeleton-header h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.project-filter-button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--accent);
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.project-filter-button:hover {
+  background: rgba(79, 157, 255, 0.1);
+  border-color: var(--accent);
+}
+
+.project-filter-caret {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.refresh-button {
+  background: var(--surface);
+  color: #e0e0e0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.refresh-button:hover {
+  background: var(--surface-alt);
+  border-color: var(--accent-soft);
+}
+
+.delete-done-button {
+  background: var(--surface);
+  color: #e57373;
+  border: 1px solid rgba(229, 115, 115, 0.3);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.delete-done-button:hover {
+  background: rgba(229, 115, 115, 0.1);
+  border-color: rgba(229, 115, 115, 0.5);
+}
+
+.task-search {
+  display: flex;
+  gap: 4px;
+}
+
+.task-search-input {
+  background: var(--surface);
+  color: #e0e0e0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  width: 180px;
+  transition: all 0.2s ease;
+}
+
+.task-search-input:focus {
+  outline: none;
+  border-color: var(--accent-soft);
+  background: var(--surface-alt);
+}
+
+.task-search-button {
+  background: var(--surface);
+  color: #e0e0e0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.task-search-button:hover {
+  background: var(--surface-alt);
+  border-color: var(--accent-soft);
+}
+
+.kanban-board-content {
+  display: flex;
+  gap: var(--space-xl);
+  overflow-x: auto;
+  padding-bottom: var(--space-lg);
+  padding-right: var(--space-xl);
+}
+
+.kanban-board-content::-webkit-scrollbar {
+  height: 8px;
+}
+
+.kanban-board-content::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+.kanban-board-content::-webkit-scrollbar-thumb {
+  background: var(--surface-alt);
+  border-radius: 4px;
+}
+
+.kanban-board-content::-webkit-scrollbar-thumb:hover {
+  background: var(--surface);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-lg);
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+/* A project checked out to a machine is developed only there (#8339). */
+.kanban-checkout-banner {
+  border: 2px solid var(--danger);
+  background: rgba(255, 107, 107, 0.12);
+  border-radius: 8px;
+  padding: var(--space-md) var(--space-lg);
+}
+
+.kanban-checkout-banner strong {
+  display: block;
+  color: var(--danger);
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+}
+
+.kanban-checkout-banner p {
+  margin: var(--space-xs) 0 0;
+}

@@ -1,0 +1,85 @@
+# Scan Configuration - Single source of truth for ecosystem scanning
+# Used by: graph_builder.py
+#
+# Philosophy: Track OUR code, skip imported/generated/vendored code.
+# Each project's .gitignore handles project-specific exclusions.
+
+# File extensions to scan
+scan_extensions:
+  .md: markdown
+  .py: python
+  .ts: typescript
+  .tsx: typescript
+  .js: javascript
+  .jsx: javascript
+  .go: go
+  .swift: swift
+  .json: config
+  .yaml: config
+  .yml: config
+  .sh: shell
+  .bash: shell
+  .zsh: shell
+  .sql: sql
+  .toml: config
+  Makefile: config
+  Dockerfile: config
+
+# Directories to skip during scanning
+skip_dirs:
+  # Package managers / vendored dependencies (not our code)
+  - node_modules
+  - venv
+  - .venv
+  - __pycache__
+  - .git
+  - .pytest_cache
+  - .ruff_cache
+  - .mypy_cache
+
+  # Build output / generated artifacts
+  - dist
+  - build
+  - .next
+  - htmlcov
+  - coverage
+
+  # Trash and archives
+  - _trash
+  - trash
+  - _archive
+  - archives
+  - archive
+
+  # Generated/temporary
+  - logs
+  - temp
+  - tmp
+  - cursor_history
+
+  # Agent infrastructure (not project code)
+  - _inbox
+  - _handoff
+
+# Files to skip (boilerplate that exists in every project)
+skip_files:
+  - package.json
+  - package-lock.json
+  - __init__.py
+  - CLAUDE.md
+  - mcp_config.json
+  - registry-entry.json
+  - agent_hooks.json
+  - skill.json
+
+# File patterns to skip
+skip_patterns:
+  - "tsconfig*"    # TypeScript configs
+  - "*.d.ts"       # TypeScript declarations
+
+# This install's own skip_dirs and ignore_projects are in the local config's
+# [graph] section (see "Local integrations" in scripts/config.py).
+
+# Projects exempt from orphan-project alerts (legitimately have no parent)
+orphan_exempt_projects:
+  - root

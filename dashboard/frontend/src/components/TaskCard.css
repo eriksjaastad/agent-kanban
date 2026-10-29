@@ -1,0 +1,156 @@
+/* Task Card Pattern from design system */
+.task-card {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: var(--space-lg);
+  margin-bottom: var(--space-md);
+  cursor: grab;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid transparent;
+  position: relative;
+}
+
+.task-card.clickable {
+  cursor: grab;
+}
+
+.task-card.clickable:hover {
+  cursor: pointer;
+}
+
+.task-card:hover {
+  border-color: var(--accent-soft);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.task-card:active {
+  cursor: grabbing;
+}
+
+.task-card.dragging {
+  opacity: 0.5;
+  transform: rotate(2deg);
+}
+
+.task-card-priority-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  border-radius: 8px 0 0 8px;
+}
+
+.task-card-content {
+  margin-left: 0;
+}
+
+.task-card-id {
+  font-size: 0.875rem;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: var(--space-xs);
+  font-family: 'JetBrains Mono', 'Monaco', 'Courier New', monospace;
+  opacity: 0.9;
+}
+
+.task-card-text {
+  margin: 0 0 var(--space-sm) 0;
+  color: #e0e0e0;
+  font-size: 1rem;
+  line-height: 1.5;
+  font-family: 'JetBrains Mono', 'Monaco', 'Courier New', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.task-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+}
+
+.task-card-project {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  background: var(--surface-alt);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.task-card-category {
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: rgba(79, 157, 255, 0.1);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 4px;
+  font-weight: 500;
+  border: 1px solid rgba(79, 157, 255, 0.2);
+}
+
+.task-card-type-badge {
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: rgba(79, 157, 255, 0.1);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 4px;
+  font-weight: 600;
+  border: 1px solid rgba(79, 157, 255, 0.2);
+}
+
+.task-card-prompt-indicator {
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.8;
+  cursor: help;
+  transition: opacity 0.2s ease;
+}
+
+.task-card-prompt-indicator:hover {
+  opacity: 1;
+}
+
+/* Task relationship badges (Tasks #4645, #4579) */
+.task-card-subtask-badge {
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: rgba(79, 157, 255, 0.1);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 4px;
+  font-weight: 500;
+  border: 1px solid rgba(79, 157, 255, 0.2);
+}
+
+.task-card-blocked-badge {
+  font-size: 0.75rem;
+  color: var(--danger);
+  background: rgba(255, 107, 107, 0.1);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 4px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 107, 107, 0.2);
+}
+
+/* A blocker reference that resolves to nothing. Deliberately a different hue
+   from the normal blocked badge: waiting on real work is routine, a dangling
+   reference is a data bug that no amount of finishing tasks will clear. */
+.task-card-blocked-badge-broken {
+  color: var(--warning, #d68910);
+  background: rgba(214, 137, 16, 0.12);
+  border: 1px solid rgba(214, 137, 16, 0.3);
+  border-style: dashed;
+}
+
+.task-card-parent-badge {
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: var(--surface-alt);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 4px;
+  font-weight: 500;
+}

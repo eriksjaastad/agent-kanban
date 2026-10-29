@@ -1,0 +1,122 @@
+.project-filter-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: var(--space-lg);
+}
+
+.project-filter-modal {
+  background: var(--surface);
+  border-radius: 10px;
+  width: 100%;
+  max-width: 420px;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.project-filter-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.project-filter-modal-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+.project-filter-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.project-filter-search {
+  margin: var(--space-md) var(--space-lg) 0;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg);
+  color: #e0e0e0;
+  font-size: 0.9rem;
+}
+
+.project-filter-search:focus {
+  outline: none;
+  border-color: var(--accent-soft);
+  background: var(--surface-alt);
+}
+
+.project-filter-list {
+  margin: var(--space-md) 0;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.project-filter-item {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #e0e0e0;
+  padding: var(--space-sm) var(--space-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.project-filter-item:hover {
+  background: rgba(79, 157, 255, 0.12);
+}
+
+.project-filter-item.active {
+  background: rgba(79, 157, 255, 0.2);
+  color: var(--accent);
+}
+
+.project-filter-name {
+  font-weight: 500;
+}
+
+.project-filter-name-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.project-filter-count {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--muted);
+}
+
+.project-filter-loading,
+.project-filter-error,
+.project-filter-empty {
+  padding: var(--space-md) var(--space-lg);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.project-filter-error {
+  color: var(--danger);
+}

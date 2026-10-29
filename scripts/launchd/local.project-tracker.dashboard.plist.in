@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    LaunchAgent TEMPLATE: the project-tracker dashboard (uvicorn on port 8000).
+
+    This job was the conspicuous absence in this directory — the six siblings
+    were tracked while the dashboard's own plist existed only in
+    ~/Library/LaunchAgents, as untracked machine-local config. It defines the
+    StandardOutPath/StandardErrorPath that #6750's log rotation caps, so the
+    rotation lived in the repo while the paths it rotates did not (#6887).
+
+    KeepAlive restarts the process when it exits, but cannot see the
+    alive-but-broken state where uvicorn stays up and every request 500s —
+    that is what local.project-tracker.dashboard-watchdog exists for, probing
+    /api/health.
+
+    @PT_HOME@ is substituted at install time; launchd cannot expand $HOME or
+    parse placeholders, so do NOT copy this .plist.in directly. Install it with:
+
+        scripts/launchd/install-dashboard.sh install
+
+    Use the script rather than a hand-run sed: it guards against an
+    unsubstituted placeholder leaking into the installed plist, and it does
+    unload/load rather than `launchctl kickstart -k`, which only restarts an
+    already-bootstrapped job and does nothing on a fresh machine.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.project-tracker.dashboard</string>
+
+    <!-- The launcher injects Doppler secrets and rotates the two log files
+         below before exec'ing uvicorn. Point at the script, not at uvicorn
+         directly, or the rotation never runs. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>@PT_HOME@/scripts/launch-dashboard.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>@PT_HOME@</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- launchd owns these descriptors, which is why Python logging cannot cap
+         them and launch-dashboard.sh copy-truncates them at startup instead. -->
+    <key>StandardOutPath</key>
+    <string>@PT_HOME@/logs/dashboard.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>@PT_HOME@/logs/dashboard.stderr.log</string>
+</dict>
+</plist>

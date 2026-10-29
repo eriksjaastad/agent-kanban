@@ -1,0 +1,36 @@
+.job-stats-chart {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.job-stats-chart-heading {
+  margin-bottom: var(--space-lg);
+}
+
+.job-stats-chart-heading h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: var(--space-xs);
+}
+
+.job-stats-chart-subtitle {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.job-stats-plot {
+  width: 100%;
+  height: 300px;
+  margin-top: var(--space-md);
+}
+
+.job-stats-chart-empty {
+  text-align: center;
+  padding: var(--space-xl);
+  color: var(--muted);
+  font-style: italic;
+}

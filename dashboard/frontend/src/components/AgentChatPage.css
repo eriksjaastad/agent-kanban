@@ -1,0 +1,79 @@
+.agent-chat-board {
+  padding: 0 0 2rem;
+}
+.agent-chat-status {
+  color: var(--text-muted, #6c757d);
+}
+.agent-chat-error {
+  color: #b00020;
+  background: #fdecea;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+}
+.agent-chat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.agent-chat-item {
+  border: 1px solid var(--border, #dee2e6);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  background: var(--card-bg, #fff);
+}
+.agent-chat-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: baseline;
+  font-size: 0.85rem;
+  color: var(--text-muted, #6c757d);
+  margin-bottom: 0.5rem;
+}
+.agent-chat-id {
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+}
+.agent-chat-from {
+  font-weight: 700;
+  color: var(--text, #212529);
+}
+.agent-chat-to {
+  font-weight: 600;
+}
+.agent-chat-priority {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: #fff3cd;
+  color: #856404;
+}
+.agent-chat-priority.priority-high {
+  background: #f8d7da;
+  color: #721c24;
+}
+.agent-chat-reply {
+  color: #0d6efd;
+  text-decoration: none;
+}
+.agent-chat-parent {
+  margin: 0 0 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-left: 3px solid #adb5bd;
+  background: #f8f9fa;
+  font-size: 0.85rem;
+  color: #495057;
+}
+.agent-chat-body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}

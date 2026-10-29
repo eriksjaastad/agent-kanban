@@ -1,0 +1,296 @@
+.dashboard-loading,
+.dashboard-error {
+  padding: 2rem 0;
+  color: var(--text-secondary, #888);
+}
+
+.dashboard-error {
+  color: var(--color-danger, #e74c3c);
+}
+
+.dashboard-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+/* Summary cards row */
+.dashboard-summary {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: var(--bg-secondary, #1a1a2e);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  min-width: 120px;
+  flex: 1;
+}
+
+.summary-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary, #eee);
+}
+
+.summary-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.25rem;
+}
+
+.summary-card.highlight-bad .summary-number {
+  color: var(--color-danger, #e74c3c);
+}
+
+/* Sections */
+.dashboard-section {
+  background: var(--bg-secondary, #1a1a2e);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.dashboard-section h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #eee);
+}
+
+/* PR list */
+.pr-list, .activity-list, .ci-list, .branch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pr-item, .activity-item, .ci-item, .branch-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color, #222);
+  font-size: 0.875rem;
+}
+
+.pr-item:last-child, .activity-item:last-child,
+.ci-item:last-child, .branch-item:last-child {
+  border-bottom: none;
+}
+
+.pr-item a, .ci-item a {
+  color: var(--color-link, #58a6ff);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pr-title, .ci-name {
+  flex: 1;
+  color: var(--text-primary, #eee);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-badge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.pr-badge.approved { background: #1a4d2e; color: #4ade80; }
+.pr-badge.changes_requested { background: #4d1a1a; color: #f87171; }
+.pr-badge.pending { background: #4d3a1a; color: #fbbf24; }
+.pr-badge.draft { background: #333; color: #888; }
+
+.pr-meta, .activity-meta, .ci-meta, .ci-branch {
+  color: var(--text-secondary, #888);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* Activity */
+.activity-repo, .branch-repo {
+  color: var(--color-link, #58a6ff);
+  font-weight: 500;
+  min-width: 180px;
+}
+
+.activity-commits {
+  color: var(--text-secondary, #888);
+  font-size: 0.8rem;
+}
+
+/* CI */
+.ci-item.failing {
+  border-left: 3px solid var(--color-danger, #e74c3c);
+  padding-left: 0.75rem;
+}
+
+/* Branches */
+.branch-names {
+  color: var(--text-secondary, #888);
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* Expand button */
+.expand-button {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  background: transparent;
+  border: 1px solid var(--border-color, #333);
+  border-radius: 6px;
+  color: var(--text-secondary, #888);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.expand-button:hover {
+  color: var(--text-primary, #eee);
+  border-color: var(--text-secondary, #888);
+}
+
+/* Raw data */
+.raw-data {
+  cursor: pointer;
+}
+
+.raw-data summary {
+  color: var(--text-secondary, #888);
+  font-size: 0.8rem;
+}
+
+.raw-data pre {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--bg-primary, #111);
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 0.75rem;
+  max-height: 500px;
+  overflow-y: auto;
+  color: var(--text-secondary, #aaa);
+}
+
+/* Incomplete-data notice — shown only when a GitHub fetch actually failed.
+   Deliberately not dismissible: hiding it would restore the silent
+   degradation this panel exists to prevent. */
+.fetch-errors-note {
+  margin: 0 0 0.5rem;
+  color: var(--warning);
+  font-size: 0.85rem;
+}
+
+.fetch-errors-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+/* Each GitHub section remains visible while a background snapshot refreshes. */
+.github-status {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  color: var(--text-secondary, #888);
+  font-size: 0.85rem;
+}
+.github-fetching {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  color: var(--text-secondary, #888);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+.dashboard-section h2 .github-fetching { margin-left: 0.5rem; }
+.dashboard-summary > .github-fetching { flex-basis: 100%; }
+
+/* Summary cards are links into the section that lists what they counted.
+   scroll-margin keeps the heading clear of the top edge on arrival. */
+.dashboard-section,
+.dashboard-summary {
+  scroll-margin-top: 1rem;
+}
+
+a.summary-card {
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+a.summary-card:hover,
+a.summary-card:focus-visible {
+  border-color: var(--accent, #4f9dff);
+  background: var(--surface-alt, #1f1f2c);
+}
+
+a.summary-card:focus-visible {
+  outline: 2px solid var(--accent, #4f9dff);
+  outline-offset: 2px;
+}
+
+/* The section just jumped to, so the landing is visible rather than guessed. */
+.dashboard-section:target {
+  border-color: var(--accent, #4f9dff);
+}
+
+.repo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.repo-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.repo-meta {
+  margin-left: auto;
+  color: var(--text-secondary, #888);
+  font-size: 0.8125rem;
+}
+
+.repo-badge {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary, #888);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 10px;
+  padding: 0 0.5rem;
+}
+
+.repo-badge.archived {
+  color: var(--warning, #ffd43b);
+  border-color: var(--warning, #ffd43b);
+}
+
+.section-empty {
+  color: var(--text-secondary, #888);
+  font-size: 0.875rem;
+  margin: 0;
+}

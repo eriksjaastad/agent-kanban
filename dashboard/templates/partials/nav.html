@@ -1,0 +1,26 @@
+<!-- Navigation bar partial for Jinja pages -->
+<nav class="navigation">
+    <div class="navigation-container">
+        <div class="navigation-brand">
+            <a href="/dashboard" class="navigation-title">{{ nav_title }}</a>
+        </div>
+        <div class="navigation-links">
+            {% for item in nav_items %}
+                {% if item.children %}
+                <div class="nav-group">
+                    <a href="{{ item.href }}" class="nav-link {{ 'active' if item.active else '' }}">{{ item.label }}</a>
+                    <button type="button" class="nav-caret" aria-haspopup="true" aria-expanded="false" aria-label="{{ item.label }} menu">▾</button>
+                    <div class="nav-menu" role="menu">
+                        {% for child in item.children %}
+                        <a href="{{ child.href }}" class="nav-menu-link {{ 'active' if child.active else '' }}" role="menuitem">{{ child.label }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <a href="{{ item.href }}" class="nav-link {{ 'active' if item.active else '' }}">{{ item.label }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</nav>
+<script src="/static/nav.js" defer></script>

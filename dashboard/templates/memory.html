@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{#
+  The /memory page: one template, several renderers, no module system.
+  Every script below loads into the same global scope, in this order, and a
+  top-level name defined twice is silently replaced by the later file:
+    memory.js          Graph view (Canvas 2D + d3-force); owns the unprefixed names
+    memory_svg.js      Classic view (SVG); inside an IIFE, svg* names
+    memory_list.js     List view, plus switchView() and refreshData()
+    memory_heatmap.js  Heatmap view; heatmap names (loadHeatmap, renderHeatmap)
+    memory_overlay.js  Knowledge-graph overlay; overlay* names
+  Shared elements: #memory-stats and #memory-legend belong to the Graph view;
+  the overlay draws its own legend in #overlay-legend.
+  Adding a view: a namespaced memory_<view>.js, a #memory-<view>-view
+  container and a tab button here, the show/hide case in switchView()
+  (memory_list.js), its <script> tag below and its CSS in memory.css. Then
+  check nodeColor() in the console, to make sure nothing overwrote it.
+#}
+
+{% block title %}Memory Graph{% endblock %}
+
+{% block body_class %}memory-page{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="/static/memory.css">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+{% endblock %}
+
+{% block page_header_content %}
+<div class="page-title-group">
+    <h1>🧠 Memory</h1>
+    <p class="subtitle">Cross-agent persistent memory</p>
+</div>
+<div class="header-actions header-actions--stacked">
+    <div class="view-tabs">
+        <button onclick="switchView('graph')" id="tab-graph" class="tab-btn active">📊 Graph</button>
+        <button onclick="switchView('svg')" id="tab-svg" class="tab-btn">🎨 Classic</button>
+        <button onclick="switchView('overlay')" id="tab-overlay" class="tab-btn">🔬 Overlay</button>
+        <button onclick="switchView('heatmap')" id="tab-heatmap" class="tab-btn">🌡️ Heatmap</button>
+        <button onclick="switchView('list')" id="tab-list" class="tab-btn">📋 List</button>
+    </div>
+    <div class="memory-build-status">
+        <span class="build-status-text" id="memory-build-status-text">Graph build status…</span>
+        <span class="build-status-actions">
+            <button class="shell-copy-pill" title="Click to copy manual rebuild command"
+                    onclick="ptCopyCommand('pt graph build --force')">
+                <span class="label">📋 Manual:</span>
+                <code>pt graph build --force</code>
+            </button>
+            <span class="build-status-note">takes about 2.5 hours</span>
+        </span>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_main_class %}page-main--full memory-container{% endblock %}
+
+{% block content %}
+    <div id="memory-graph-wrapper">
+        <div id="memory-controls">
+                <div class="control-group">
+                    <label for="type-filter">Thought Type:</label>
+                    <select id="type-filter">
+                        <option value="">All Types</option>
+                        <!-- Populated dynamically from /api/memory/types -->
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="machine-filter">Machine:</label>
+                    <select id="machine-filter">
+                        <option value="">All Machines</option>
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="min-similarity">Min Similarity:</label>
+                    <input type="range" id="min-similarity" min="0" max="100" value="30" step="5">
+                    <span id="min-similarity-val">0.30</span>
+                </div>
+                <div class="control-group">
+                    <label for="max-edges">Max Edges/Node:</label>
+                    <input type="range" id="max-edges" min="1" max="20" value="10">
+                    <span id="max-edges-val">10</span>
+                </div>
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="labels-toggle"> Show Labels
+                    </label>
+                </div>
+                <div class="memory-stats" id="memory-stats">
+                    <!-- Filled by JS -->
+                </div>
+                <div id="memory-legend" class="memory-legend">
+                    <h4>Legend</h4>
+                    <!-- Populated dynamically -->
+                </div>
+                <button id="reset-view" class="btn-small">Fit to Screen</button>
+        </div>
+
+        <div id="memory-viewport" class="view-content active">
+            <canvas id="memory-canvas"></canvas>
+
+            <div id="thought-details" class="details-panel hidden">
+                <button class="close-btn" onclick="closeDetails()">&times;</button>
+                <h3 id="details-type">Thought</h3>
+                <div class="details-content">
+                    <p id="details-placeholder">Click on any thought to see details here.</p>
+                    <div id="details-info" class="hidden">
+                        <p><strong>Content:</strong></p>
+                        <p id="details-content" class="thought-content"></p>
+                        <p><strong>Created:</strong> <span id="details-created"></span></p>
+                        <p><strong>Project:</strong> <span id="details-project"></span></p>
+                        <p><strong>Connections:</strong> <span id="details-connections"></span></p>
+                        <p><strong>Machine:</strong> <span id="details-machine"></span></p>
+                        <div id="details-related">
+                            <h4>Related Thoughts</h4>
+                            <ul id="related-list"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="memory-svg-view" class="view-content hidden">
+            <svg id="memory-svg"></svg>
+        </div>
+    </div>
+
+    <div id="memory-heatmap-view" class="view-content hidden">
+        <div id="heatmap-container">
+            <!-- Populated by memory_heatmap.js -->
+        </div>
+    </div>
+
+    <div id="memory-overlay-view" class="view-content hidden">
+        <div id="overlay-controls" class="overlay-sidebar">
+            <div class="control-group">
+                <label for="overlay-min-mentions">Min Mentions:</label>
+                <input type="range" id="overlay-min-mentions" min="1" max="10" value="2" step="1">
+                <span id="overlay-min-mentions-val">2</span>
+            </div>
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="overlay-labels-toggle"> Show Labels
+                </label>
+            </div>
+            <div id="overlay-legend" class="memory-legend">
+                <h4>Legend</h4>
+            </div>
+            <div class="memory-stats" id="overlay-stats">
+                <!-- Filled by JS -->
+            </div>
+            <div class="overlay-show-more-group">
+                <p id="overlay-show-more-warning" class="overlay-warning hidden">⚠️ Showing more than 50,000 edges may stall your browser.</p>
+                <button id="overlay-show-more" class="btn-small hidden">Show more</button>
+            </div>
+            <button id="overlay-reset-view" class="btn-small">Fit to Screen</button>
+        </div>
+        <div id="overlay-container">
+            <canvas id="overlay-canvas"></canvas>
+            <div id="overlay-status" class="overlay-status">
+                <h3>Knowledge graph</h3>
+                <p>Knowledge graph: projects, people, artifacts, concepts, tasks, and decisions extracted from memories. Colored by type, sized by mention count.</p>
+                <p id="overlay-waiting">Loading...</p>
+            </div>
+            <div id="overlay-detail-panel" class="overlay-detail-panel hidden">
+                <button class="overlay-detail-close" onclick="closeOverlayDetail()">&times;</button>
+                <h3 id="overlay-detail-name"></h3>
+                <div id="overlay-detail-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="memory-list-view" class="view-content hidden">
+        <div class="list-controls">
+            <div class="control-group search-group">
+                <input type="text" id="memory-search" placeholder="Search thoughts...">
+            </div>
+            <div class="control-group">
+                <label for="list-type-filter">Type:</label>
+                <select id="list-type-filter">
+                    <option value="">All Types</option>
+                    <!-- Populated dynamically from /api/memory/types -->
+                </select>
+            </div>
+        </div>
+        <div class="table-container">
+            <table id="thoughts-table">
+                <thead>
+                    <tr>
+                        <th class="col-type">Type</th>
+                        <th class="col-content">Content</th>
+                        <th class="col-project">Project</th>
+                        <th class="col-date">Created</th>
+                    </tr>
+                </thead>
+                <tbody id="thoughts-body">
+                    <!-- Filled by JS -->
+                </tbody>
+            </table>
+        </div>
+        <div class="list-footer">
+            <div id="list-stats">Showing 0 thoughts</div>
+            <div class="pagination">
+                <button id="prev-page" class="btn-small" disabled>Previous</button>
+                <span id="page-info">Page 1</span>
+                <button id="next-page" class="btn-small" disabled>Next</button>
+            </div>
+        </div>
+    </div>
+    </main>
+
+    <div id="loading-overlay">
+        <div class="loader"></div>
+        <p>Loading knowledge graph...</p>
+    </div>
+
+{% endblock %}
+
+{% block scripts %}
+    <script src="/static/memory.js"></script>
+    <script src="/static/memory_svg.js"></script>
+    <script src="/static/memory_list.js"></script>
+    <script src="/static/memory_heatmap.js"></script>
+    <script src="/static/memory_overlay.js"></script>
+{% endblock %}

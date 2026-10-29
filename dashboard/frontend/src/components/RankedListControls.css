@@ -1,0 +1,36 @@
+.ranked-list-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  margin: var(--space-md) 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ranked-list-btn {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.ranked-list-btn:hover {
+  background: var(--accent-soft);
+}
+
+.older-listings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.older-listings-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0;
+}

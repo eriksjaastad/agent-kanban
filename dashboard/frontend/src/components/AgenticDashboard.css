@@ -1,0 +1,269 @@
+.agentic-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.agentic-controls {
+  display: flex;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.control-group select {
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+  border-radius: 6px;
+  padding: var(--space-sm) var(--space-md);
+}
+
+.time-range-buttons {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.time-range-buttons button {
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.time-range-buttons button.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: #e8f0ff;
+}
+
+.agentic-loading,
+.agentic-error,
+.agentic-empty {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: var(--space-lg);
+  color: var(--muted);
+}
+
+.agentic-error {
+  border: 1px solid rgba(255, 107, 107, 0.5);
+  color: #ff6b6b;
+}
+
+.agentic-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-lg);
+}
+
+.stat-card {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: var(--space-lg);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.stat-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stat-value {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #f5f5f7;
+}
+
+.agentic-chart {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: var(--space-xl);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.chart-header {
+  margin-bottom: var(--space-lg);
+}
+
+.chart-header h2 {
+  margin-bottom: var(--space-sm);
+  color: #f1f1f5;
+}
+
+.chart-header p {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.agentic-notes {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: var(--space-xl);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.agentic-notes h2 {
+  margin-bottom: var(--space-md);
+  color: #f1f1f5;
+}
+
+.agentic-notes ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* ===== Markers panel ===== */
+
+.agentic-markers {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: var(--space-xl);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.agentic-markers h2 {
+  margin-bottom: var(--space-sm);
+  color: #f1f1f5;
+}
+
+.markers-description {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-bottom: var(--space-lg);
+}
+
+.marker-error {
+  background: rgba(255, 107, 107, 0.12);
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  border-radius: 8px;
+  color: #ff6b6b;
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-md);
+  font-size: 0.85rem;
+}
+
+.marker-add-form {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+}
+
+.marker-add-form input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e0e0e0;
+  padding: var(--space-sm) var(--space-md);
+  font-size: 0.9rem;
+  min-width: 0;
+}
+
+.marker-add-form input[type="date"] { flex: 0 0 140px; }
+.marker-add-form input[type="text"]:nth-child(2) { flex: 1; min-width: 160px; }
+.marker-add-form input[type="text"]:nth-child(3) { flex: 0 1 140px; }
+
+.markers-empty,
+.markers-unreadable {
+  color: var(--muted);
+  font-size: 0.9rem;
+  padding: var(--space-md) 0;
+}
+
+.marker-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.marker-row {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.marker-display-row,
+.marker-edit-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.marker-date {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #ffd43b;
+  min-width: 90px;
+}
+
+.marker-label {
+  flex: 1;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+}
+
+.marker-agent {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.marker-source {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.marker-source--manual {
+  background: rgba(79, 157, 255, 0.15);
+  color: #4f9dff;
+}
+
+.marker-source--auto {
+  background: rgba(81, 207, 102, 0.15);
+  color: #51cf66;
+}
+
+.marker-edit-row input {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #e0e0e0;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+}
+
+.marker-edit-row input[type="date"] { flex: 0 0 130px; }
+.marker-edit-row input[type="text"]:nth-child(2) { flex: 1; min-width: 120px; }
+.marker-edit-row input[type="text"]:nth-child(3) { flex: 0 1 110px; }
+
+.btn-danger {
+  background: rgba(255, 107, 107, 0.15);
+  border-color: rgba(255, 107, 107, 0.3);
+  color: #ff6b6b;
+}
+
+.btn-danger:hover {
+  background: rgba(255, 107, 107, 0.25);
+}

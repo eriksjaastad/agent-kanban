@@ -1,0 +1,85 @@
+# Python
+venv/
+env/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Data and databases
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Environment
+.env
+.env.*
+
+# Testing
+.pytest_cache/
+.pytest_tmp/
+.coverage
+htmlcov/
+.hypothesis/
+tests/screenshots/  # Visual regression test screenshots
+
+# Distribution
+*.whl*.backup
+
+# Lock files
+uv.lock
+
+# Media files — images, video, audio (not code)
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.tif
+*.ico
+*.webp
+*.svg
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.mp3
+*.wav
+*.m4a
+project-graph-screenshots-movies/
+
+# Claude Code workspace state (plans, local settings, worktrees)
+.claude/
+
+# Manual Anthropic cost exports — portfolio-level, not project-scoped
+*.csv
+
+# Per-session floor manager notes — updated every session, machine-local
+PROGRESS.md
+.scratch/
+
+# Doppler encrypted-fallback blob written to the repo root by a malformed
+# flag (e.g. `doppler ... -h` capturing as a redirect). Encrypted, but not
+# something that should ever reach a commit.
+/-h

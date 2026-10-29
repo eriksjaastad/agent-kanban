@@ -1,0 +1,72 @@
+/* Rows reuse the Jobs page classes; these keep a few dozen reminders on screen. */
+.reminders-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-xs);
+}
+
+.reminder-row {
+  padding: var(--space-sm) var(--space-md);
+}
+
+.reminder-name {
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.reminder-location {
+  color: var(--accent);
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+
+.reminders-empty {
+  color: var(--muted);
+  margin: 0;
+}
+
+.reminders-error {
+  color: var(--danger);
+  margin: 0 0 12px;
+}
+
+.reminders-retry {
+  margin-left: 8px;
+}
+
+.reminders-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}
+
+.reminders-input {
+  flex: 1 1 10rem;
+  background: var(--bg);
+  border: 1px solid var(--surface-alt);
+  color: #e0e0e0;
+  border-radius: 6px;
+  padding: var(--space-sm) var(--space-md);
+  font: inherit;
+}
+
+.reminders-input--wide {
+  flex-basis: 16rem;
+}
+
+.reminders-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.reminders-built-in summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.reminders-built-in[open] summary {
+  margin-bottom: var(--space-md);
+}

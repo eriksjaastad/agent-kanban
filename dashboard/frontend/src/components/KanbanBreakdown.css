@@ -1,0 +1,110 @@
+.breakdown-section h2 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+}
+
+.breakdown-subtitle {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* Four fixed columns, matching the board. minmax(0, 1fr) is what keeps a long
+   project name from widening its column and pushing the row past the page. */
+.breakdown-columns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-lg);
+}
+
+.breakdown-column {
+  background: var(--surface-alt, #1f1f2c);
+  border-radius: 6px;
+  padding: var(--space-md);
+  min-width: 0;
+}
+
+.breakdown-column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.breakdown-column-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #e0e0e0;
+  white-space: nowrap;
+}
+
+.breakdown-column-total {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.breakdown-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.breakdown-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.breakdown-project {
+  color: #e0e0e0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.breakdown-project:hover {
+  color: var(--accent);
+}
+
+.breakdown-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.breakdown-empty,
+.breakdown-more {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: var(--space-xs) 0 0 0;
+}
+
+.breakdown-error {
+  color: var(--danger, #ff6b6b);
+  font-size: 0.8125rem;
+  margin-bottom: var(--space-sm);
+}
+
+@media (max-width: 900px) {
+  .breakdown-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -1,0 +1,26 @@
+#!/bin/bash
+# Project Tracker launcher script
+# Usage: ./pt [command]
+# Example: ./pt launch
+#
+# pt runs without Doppler: nothing in it needs a secret. `pt memory` runs
+# brain.py under the Doppler project its [memory] config names, if any.
+
+export PT_CALLER_CWD="$PWD"
+export UV_CACHE_DIR="${UV_CACHE_DIR:-${TMPDIR:-/tmp}/pt-uv-cache}"
+
+launcher_source="${BASH_SOURCE[0]:-$0}"
+while [ -h "$launcher_source" ]; do
+  launcher_dir="$(cd -P "$(dirname "$launcher_source")" >/dev/null 2>&1 && pwd)"
+  launcher_source="$(readlink "$launcher_source")"
+  case "$launcher_source" in
+    /*) ;;
+    *) launcher_source="$launcher_dir/$launcher_source" ;;
+  esac
+done
+launcher_dir="$(cd -P "$(dirname "$launcher_source")" >/dev/null 2>&1 && pwd)"
+cd "$launcher_dir"
+
+# uv on PATH, else uv's default install location (launchd and cron PATHs are short).
+UV="$(command -v uv || echo "$HOME/.local/bin/uv")"
+exec "$UV" run scripts/pt.py "$@"

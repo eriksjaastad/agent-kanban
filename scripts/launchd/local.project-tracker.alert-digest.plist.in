@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    LaunchAgent TEMPLATE: portfolio alert digest, fires 7:00 AM local.
+
+    This is a template — the @PT_HOME@ placeholders get substituted with the
+    installing machine's project path by scripts/launchd/install-alert-digest.sh.
+    Do NOT copy this .plist.in file directly to ~/Library/LaunchAgents/ —
+    launchd cannot parse the placeholders (and cannot expand $HOME either).
+
+    If the Mac is asleep/closed at 7am, launchd runs the job on the next wake
+    (built-in catch-up), so a closed laptop still gets its digest.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.project-tracker.alert-digest</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>@PT_HOME@/scripts/alert-digest.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>@PT_HOME@/logs/alert_digest.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>@PT_HOME@/logs/alert_digest.stderr.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>@PT_HOME@</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>

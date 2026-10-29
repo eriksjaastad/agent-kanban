@@ -1,0 +1,222 @@
+.task-form {
+  padding: var(--space-lg);
+  background: var(--surface);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.task-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: var(--space-sm);
+}
+
+.task-form-header h2 {
+  margin: 0;
+  color: var(--accent);
+}
+
+.task-form-close {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.task-form-close:hover {
+  color: white;
+}
+
+.task-form-error {
+  background: rgba(255, 107, 107, 0.1);
+  color: var(--danger);
+  padding: var(--space-sm);
+  border-radius: 4px;
+  margin-bottom: var(--space-md);
+  border: 1px solid var(--danger);
+}
+
+.task-form-field {
+  margin-bottom: var(--space-md);
+}
+
+.task-form-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: var(--space-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.task-form-label .required {
+  color: var(--danger);
+}
+
+.task-form-textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: white;
+  padding: var(--space-sm);
+  font-family: var(--font-mono);
+  resize: vertical;
+  min-height: 100px;
+  box-sizing: border-box;
+}
+
+.task-form-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.task-form-textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.task-form-char-count {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: var(--space-xs);
+  text-align: right;
+}
+
+.task-form-row {
+  display: flex;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-md);
+}
+
+.task-form-row .task-form-field {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.task-form-select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: white;
+  padding: var(--space-sm);
+  font-family: inherit;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.task-form-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.task-type-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  user-select: none;
+}
+
+.task-type-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.task-type-slider {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--surface-alt);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.task-type-slider::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s ease;
+}
+
+.task-type-toggle input:checked + .task-type-slider {
+  background: var(--accent);
+  border-color: rgba(79, 157, 255, 0.6);
+}
+
+.task-type-toggle input:checked + .task-type-slider::after {
+  transform: translateX(20px);
+}
+
+.task-type-text {
+  font-size: 0.875rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.task-type-toggle input:checked ~ .task-type-text {
+  color: white;
+}
+
+.task-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-md);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: var(--space-lg);
+  margin-top: var(--space-lg);
+}
+
+.task-form-button {
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.task-form-button-cancel {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--muted);
+}
+
+.task-form-button-cancel:hover:not(:disabled) {
+  color: white;
+  border-color: white;
+}
+
+.task-form-button-submit {
+  background: var(--accent);
+  color: white;
+  border: none;
+}
+
+.task-form-button-submit:hover:not(:disabled) {
+  background: var(--accent-hover, #3a8aee);
+}
+
+.task-form-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

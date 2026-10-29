@@ -1,0 +1,118 @@
+.ideas-section {
+    background: var(--surface-alt);
+    border-bottom: 2px solid var(--accent);
+    padding: var(--space-md);
+    margin-bottom: var(--space-lg);
+}
+
+.ideas-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-md);
+}
+
+.ideas-header h2 {
+    margin: 0;
+    color: #e0e0e0;
+    font-size: 1.5rem;
+}
+
+.create-idea-btn {
+    padding: var(--space-sm) var(--space-lg);
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.create-idea-btn:hover {
+    background: var(--accent-soft);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(79, 157, 255, 0.3);
+}
+
+.ideas-list {
+    margin-top: var(--space-md);
+}
+
+.ideas-empty {
+    text-align: center;
+    padding: var(--space-xl);
+    color: var(--muted);
+    font-style: italic;
+}
+
+.ideas-section-loading {
+    padding: var(--space-lg);
+    text-align: center;
+    color: var(--muted);
+}
+
+/* Modal styles */
+.idea-textarea {
+    width: 100%;
+    min-height: 200px;
+    padding: var(--space-md);
+    background: var(--surface);
+    border: 1px solid var(--surface-alt);
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-family: 'JetBrains Mono', 'Monaco', 'Courier New', monospace;
+    font-size: 1rem;
+    line-height: 1.6;
+    resize: vertical;
+}
+
+.idea-textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.idea-error {
+    color: var(--danger);
+    margin-top: var(--space-sm);
+    font-size: 0.875rem;
+}
+
+.modal-actions {
+    display: flex;
+    gap: var(--space-md);
+    margin-top: var(--space-lg);
+    justify-content: flex-end;
+}
+
+.cancel-btn,
+.save-btn {
+    padding: var(--space-sm) var(--space-lg);
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cancel-btn {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--muted);
+}
+
+.cancel-btn:hover {
+    background: var(--surface-alt);
+}
+
+.save-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+}
+
+.save-btn:hover {
+    background: var(--accent-soft);
+    transform: translateY(-1px);
+}

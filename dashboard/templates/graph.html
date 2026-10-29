@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Project Graph{% endblock %}
+
+{% block body_class %}graph-page{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="/static/graph.css">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+{% endblock %}
+
+{% block page_header_content %}
+<div class="page-title-group">
+    <h1>🕸️ Project Graph</h1>
+</div>
+<div class="header-actions">
+    <button class="shell-copy-pill" title="Click to copy"
+            onclick="ptCopyCommand('cd ~/projects/project-tracker &amp;&amp; uv run pt scan')">
+        <span class="label">📋 Rebuild:</span>
+        <code>cd ~/projects/project-tracker &amp;&amp; uv run pt scan</code>
+    </button>
+</div>
+{% endblock %}
+
+{% block page_main_class %}page-main--full graph-container{% endblock %}
+
+{% block content %}
+        <div id="graph-viewport">
+            <div id="graph-controls">
+                <div class="control-group">
+                    <label for="project-filter">Project:</label>
+                    <select id="project-filter">
+                        <option value="">All Projects</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>File Types:</label>
+                    <div id="type-filters" class="checkbox-grid">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="orphan-toggle" checked> Show Orphans
+                    </label>
+                </div>
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="names-toggle"> Show Hub Names
+                    </label>
+                </div>
+                <div class="control-group">
+                    <label for="min-connections">Min Connections:</label>
+                    <input type="range" id="min-connections" min="0" max="20" value="0">
+                    <span id="min-connections-val">0</span>
+                </div>
+                <div class="graph-stats" id="graph-stats">
+                    <!-- Filled by JS -->
+                </div>
+                <div id="graph-legend" class="graph-legend">
+                    <h4>Legend</h4>
+                    <div id="legend-items"></div>
+                </div>
+                <button id="reset-view" class="btn-small">Reset View</button>
+            </div>
+
+            <svg id="graph-svg"></svg>
+
+            <div id="node-details" class="details-panel hidden">
+                <button class="close-btn" onclick="closeDetails()">&times;</button>
+                <h3 id="details-name">Select a node</h3>
+                <div class="details-content">
+                    <p id="details-placeholder">Click on any file or connection to see details here.</p>
+                    <div id="details-info" class="hidden">
+                        <p><strong>Path:</strong> <span id="details-path"></span></p>
+                        <p><strong>Project:</strong> <span id="details-project"></span></p>
+                        <p><strong>Type:</strong> <span id="details-type"></span></p>
+                        <p><strong>Connections:</strong> <span id="details-connections"></span></p>
+                        <div id="details-links">
+                            <h4>Links</h4>
+                            <ul id="links-list"></ul>
+                        </div>
+                    </div>
+                </div>
+                <div id="details-actions" class="details-actions hidden">
+                    <a href="#" id="view-file-btn" class="btn-primary btn-small">View File</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="loading-overlay">
+        <div class="loader"></div>
+        <p>Loading Graph Data...</p>
+    </div>
+
+{% endblock %}
+
+{% block scripts %}
+    <script src="/static/graph.js"></script>
+{% endblock %}

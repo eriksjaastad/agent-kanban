@@ -1,0 +1,126 @@
+.idea-card {
+    width: 90%;
+    margin: 0 auto var(--space-md);
+    padding: var(--space-md);
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--surface-alt);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+}
+
+.idea-card:hover {
+    border-color: var(--accent-soft);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.idea-card-content {
+    margin-bottom: var(--space-sm);
+}
+
+.idea-text {
+    white-space: pre-wrap;
+    margin: 0 0 var(--space-sm) 0;
+    color: #e0e0e0;
+    font-size: 1rem;
+    line-height: 1.6;
+    font-family: 'JetBrains Mono', 'Monaco', 'Courier New', monospace;
+}
+
+.idea-date {
+    font-size: 0.75rem;
+    color: var(--muted);
+    opacity: 0.7;
+}
+
+.idea-card-actions {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: var(--space-sm);
+}
+
+.idea-edit-btn,
+.idea-delete-btn {
+    padding: var(--space-xs) var(--space-md);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid;
+}
+
+.idea-edit-btn {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.idea-edit-btn:hover {
+    background: var(--accent-soft);
+    transform: translateY(-1px);
+}
+
+.idea-delete-btn {
+    background: transparent;
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+.idea-delete-btn:hover {
+    background: var(--danger);
+    color: white;
+    transform: translateY(-1px);
+}
+
+/* Delete confirmation UI */
+.idea-delete-confirm {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-xs);
+    background: rgba(255, 107, 107, 0.1);
+    border-radius: 4px;
+    border: 1px solid var(--danger);
+}
+
+.idea-delete-confirm-text {
+    font-size: 0.875rem;
+    color: var(--danger);
+    font-weight: 500;
+    flex: 1;
+}
+
+.idea-cancel-btn,
+.idea-confirm-delete-btn {
+    padding: var(--space-xs) var(--space-md);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid;
+}
+
+.idea-cancel-btn {
+    background: transparent;
+    color: var(--muted);
+    border-color: var(--surface-alt);
+}
+
+.idea-cancel-btn:hover {
+    background: var(--surface-alt);
+    color: white;
+}
+
+.idea-confirm-delete-btn {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
+}
+
+.idea-confirm-delete-btn:hover {
+    background: #ff5252;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(255, 107, 107, 0.3);
+}

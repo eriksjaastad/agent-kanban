@@ -1,0 +1,107 @@
+/* Dark Theme Design System from image-workflow */
+
+:root {
+  color-scheme: dark;
+  
+  /* Colors */
+  --bg: #101014;           /* Main background - deep navy */
+  --surface: #181821;      /* Card/panel backgrounds */
+  --surface-alt: #1f1f2c;  /* Alternative surface (sidebar) */
+  --accent: #4f9dff;       /* Primary blue - links, active states */
+  --accent-soft: rgba(79, 157, 255, 0.2);
+
+  /* Status colors */
+  --success: #51cf66;      /* Done column, completed tasks */
+  --danger: #ff6b6b;       /* High priority, blocked indicators */
+  --critical: #dc2626;     /* Critical priority - dark alarm red */
+  --warning: #ffd43b;      /* Warnings, caution indicators */
+  --muted: #a0a3b1;        /* Secondary text, project labels */
+  --content-max-width: 1400px;
+  --content-narrow-width: 1200px;
+  
+  /* Spacing Scale */
+  --space-xs: 0.25rem;    /* 4px - tight padding */
+  --space-sm: 0.5rem;     /* 8px - card internal */
+  --space-md: 0.75rem;    /* 12px - card padding */
+  --space-lg: 1rem;       /* 16px - section gaps */
+  --space-xl: 1.5rem;     /* 24px - column gaps */
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+  background: var(--bg);
+  color: #e0e0e0;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* In-page anchors (the dashboard's summary cards) glide rather than jump,
+   unless the viewer asked for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Links */
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Buttons */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: var(--surface);
+  color: #e0e0e0;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  background: var(--surface-alt);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Button with spinner */
+button:has(.spinner) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  justify-content: center;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

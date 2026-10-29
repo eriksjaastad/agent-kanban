@@ -1,0 +1,120 @@
+.navigation {
+  background: var(--surface);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0 var(--space-xl);
+}
+
+.navigation-container {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  flex-wrap: wrap;
+}
+
+.navigation-brand {
+  display: flex;
+  align-items: center;
+}
+
+.navigation-title {
+  color: #e0e0e0;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+}
+
+.navigation-links {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.nav-link {
+  display: inline-block;
+  padding: var(--space-md) var(--space-md);
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color 0.2s ease, border-color 0.2s ease;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+
+.nav-link:hover {
+  color: var(--accent);
+}
+
+.nav-link.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.nav-group {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The caret sits right against its label. */
+.nav-group .nav-link {
+  padding-right: 0.3rem;
+}
+
+.nav-caret {
+  background: none;
+  border: none;
+  padding: var(--space-md) var(--space-xs) var(--space-md) 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.nav-caret:hover,
+.nav-group:hover .nav-caret {
+  color: var(--accent);
+}
+
+.nav-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 180px;
+  display: none;
+  flex-direction: column;
+  padding: var(--space-xs) 0;
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  z-index: 1000;
+}
+
+.nav-group--open .nav-menu {
+  display: flex;
+}
+
+.nav-menu-link {
+  display: block;
+  padding: var(--space-sm) var(--space-md);
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.nav-menu-link:hover {
+  color: var(--accent);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.nav-menu-link.active {
+  color: var(--accent);
+}

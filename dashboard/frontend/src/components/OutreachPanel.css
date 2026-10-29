@@ -1,0 +1,205 @@
+.outreach-panel {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.outreach-header {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.outreach-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 1;
+  min-width: 0;
+  background: none;
+  padding: 0;
+  color: #e0e0e0;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.outreach-saving {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.outreach-toggle:hover {
+  background: none;
+}
+
+.outreach-chevron {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.outreach-body {
+  margin-top: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.outreach-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.outreach-loading {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.outreach-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.outreach-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: var(--surface-alt);
+  border-radius: 6px;
+  padding: var(--space-sm) var(--space-md);
+}
+
+.outreach-name-cell {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.outreach-name {
+  width: 100%;
+  text-align: left;
+  background: none;
+  padding: 0;
+  color: #e0e0e0;
+  cursor: text;
+}
+
+.outreach-name:hover {
+  background: none;
+  text-decoration: underline;
+}
+
+/* Per-field save-status indicator (#7717): small text pinned to the top-right
+   corner of the name cell, above the name itself. */
+.outreach-status {
+  position: absolute;
+  top: -0.85rem;
+  right: 0;
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.outreach-status-retry {
+  pointer-events: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--danger);
+  font-size: 0.7rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Fades "Saved" out before it's cleared. Only under no-preference: reduced
+   motion gets no animation — the text just clears. */
+@media (prefers-reduced-motion: no-preference) {
+  .outreach-status--fade {
+    opacity: 0;
+    transition: opacity 300ms ease-out;
+  }
+}
+
+.outreach-action {
+  background: var(--bg);
+  border: 1px solid var(--surface-alt);
+  color: #c7c9d4;
+  font-size: 0.85rem;
+  padding: var(--space-xs) var(--space-md);
+  border-radius: 6px;
+}
+
+.outreach-action:hover {
+  background: var(--bg);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.outreach-action--danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.outreach-row--contacted {
+  opacity: 0.6;
+}
+
+/* Full opacity while a contacted name is being edited, so the input is legible. */
+.outreach-row--contacted:focus-within {
+  opacity: 1;
+}
+
+.outreach-row--contacted .outreach-name {
+  color: var(--muted);
+}
+
+.outreach-add {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.outreach-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--surface-alt);
+  color: #e0e0e0;
+  border-radius: 6px;
+  padding: var(--space-sm) var(--space-md);
+  font: inherit;
+}
+
+.outreach-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.outreach-edit-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  color: #e0e0e0;
+  border-radius: 6px;
+  padding: var(--space-xs) var(--space-md);
+  font: inherit;
+}
+
+.outreach-add-btn {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.outreach-add-btn:hover {
+  background: #3f86e0;
+}

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ nav_title }}{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    {% block head_extra %}{% endblock %}
+</head>
+
+<body class="{% block body_class %}{% endblock %}">
+    {% include 'partials/nav.html' %}
+
+    {% block page_header %}
+    <header class="page-header">
+        <div class="header-content {% block header_content_class %}{% endblock %}">
+            {% block page_header_content %}{% endblock %}
+        </div>
+    </header>
+    {% endblock %}
+
+    {% block shell_notice %}{% endblock %}
+
+    <main class="page-main {% block page_main_class %}{% endblock %}">
+        {% block content %}{% endblock %}
+    </main>
+
+    <div id="pt-toast-container" class="pt-toast-container"></div>
+    <script>
+        // Shared toast + rebuild job poller. Available on every page.
+        window.ptToast = function (message, kind) {
+            const container = document.getElementById('pt-toast-container');
+            if (!container) return;
+            const el = document.createElement('div');
+            el.className = 'pt-toast pt-toast--' + (kind || 'info');
+            el.textContent = message;
+            container.appendChild(el);
+            setTimeout(() => el.classList.add('pt-toast--show'), 10);
+            setTimeout(() => {
+                el.classList.remove('pt-toast--show');
+                setTimeout(() => el.remove(), 300);
+            }, 4000);
+        };
+        // Poll /api/rebuild-status/{jobId} until done/error or timeout.
+        // Returns a Promise that resolves with the final job dict.
+        window.ptPollRebuild = async function (jobId, { timeoutMs = 300000, intervalMs = 1500 } = {}) {
+            const deadline = Date.now() + timeoutMs;
+            while (Date.now() < deadline) {
+                try {
+                    const resp = await fetch(`/api/rebuild-status/${jobId}`);
+                    if (resp.ok) {
+                        const job = await resp.json();
+                        if (job.status === 'done' || job.status === 'error') return job;
+                    }
+                } catch (_) { /* keep polling */ }
+                await new Promise(r => setTimeout(r, intervalMs));
+            }
+            return { status: 'error', error: 'timed out waiting for rebuild' };
+        };
+        // Copy a shell command to the clipboard and flash a toast.
+        window.ptCopyCommand = async function (text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                ptToast('Command copied — paste into a terminal', 'success');
+            } catch (e) {
+                ptToast('Copy failed — select the text manually', 'error');
+            }
+        };
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>
