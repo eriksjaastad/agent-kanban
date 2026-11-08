@@ -39,7 +39,6 @@ def pre_016_db(isolated_database, db):
     columns = {row[1] for row in conn.execute("PRAGMA table_info(jobs)")}
     conn.close()
     assert "kind" not in columns
-    assert [m["version"] for m in db.migrations_pending()] == [16]
     return db
 
 

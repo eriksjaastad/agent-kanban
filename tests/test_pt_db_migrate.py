@@ -47,14 +47,15 @@ def runner() -> CliRunner:
 
 # A fresh database starts current (schema.sql marks every migration it
 # contains), so pending migrations only exist on a database that is behind.
-# These are every migration from 016 on; each is safe to re-apply on a fresh
+# These are every migration on disk; each is safe to re-apply on a fresh
 # database, so re-applying is real work.
-BEHIND = sorted(p.stem for p in MIGRATIONS_DIR.glob("[0-9][0-9][0-9]_*.py") if int(p.stem[:3]) >= 16)
+BEHIND = sorted(p.stem for p in MIGRATIONS_DIR.glob("[0-9][0-9][0-9]_*.py"))
+FLOOR = int(BEHIND[0][:3]) - 1  # the version a migratable database already records
 
 
 @pytest.fixture
 def fresh_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """A database behind by every migration from 016, pointed at via PT_DB_PATH.
+    """A database behind by every migration on disk, pointed at via PT_DB_PATH.
 
     Stays out of the real ``data/tracker.db`` and bypasses the
     fresh-DB safety check via PT_ALLOW_FRESH_DB=1 (the same escape
@@ -65,7 +66,11 @@ def fresh_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     db_path = tmp_path / "tracker.db"
     create_database(db_path)
     conn = sqlite3.connect(db_path)
-    conn.execute("DELETE FROM schema_migrations WHERE version >= 16")
+    conn.execute("DELETE FROM schema_migrations")
+    conn.execute(  # the newest older migration a real database at the floor records
+        "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, 'floor', '2026-10-09')",
+        (FLOOR,),
+    )
     conn.commit()
     conn.close()
     monkeypatch.setenv("PT_DB_PATH", str(db_path))
@@ -99,6 +104,24 @@ def test_pt_db_migrate_applies_pending_and_reports(
     assert DatabaseManager().count_rows("migrations") >= 0
 
 
+def test_pt_db_migrate_refuses_a_database_below_the_floor(
+    runner: CliRunner, fresh_db: Path
+) -> None:
+    """A restored backup older than the oldest migration kept is not touched;
+    the error names the release that can still migrate it."""
+    conn = sqlite3.connect(fresh_db)
+    conn.execute("UPDATE schema_migrations SET version = ?", (FLOOR - 1,))
+    conn.commit()
+    conn.close()
+
+    result = runner.invoke(cli, ["db", "migrate"])
+
+    assert result.exit_code == 2, result.output
+    assert f"does not record migration {FLOOR:03d}" in result.output
+    assert "git checkout d01e79a && pt db migrate" in result.output
+    assert len(DatabaseManager().migrations_pending()) == len(BEHIND)
+
+
 def test_pt_db_migrate_is_idempotent(
     runner: CliRunner, fresh_db: Path
 ) -> None:
@@ -118,13 +141,13 @@ def test_pt_db_migrate_reports_migration_error_without_traceback(
     from db.migration_runner import MigrationError
 
     def boom(conn, migrations_dir):
-        raise MigrationError("003_crr_pk_not_null: checksum mismatch")
+        raise MigrationError("019_add_task_attachments: checksum mismatch")
 
     monkeypatch.setattr("db.migration_runner.apply_all", boom)
     result = runner.invoke(cli, ["db", "migrate"])
 
     assert result.exit_code == 2
-    assert "pt db migrate: 003_crr_pk_not_null: checksum mismatch" in result.output
+    assert "pt db migrate: 019_add_task_attachments: checksum mismatch" in result.output
     assert not isinstance(result.exception, MigrationError)
     assert "Traceback" not in result.output
 
@@ -198,16 +221,14 @@ def _unexpected_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
     Forces an error from inside the warning helper by monkeypatching
     sqlite3.connect — this covers the path after db_path.exists() has
-    returned True. The patch target "pt.sqlite3.connect" works because
-    pt.py imports the module via `import sqlite3` (not
-    `from sqlite3 import connect`); if that import ever changes, this
-    monkeypatch becomes a silent no-op and the test needs to be updated.
+    returned True. It patches the sqlite3 module itself, which every
+    caller shares.
     """
 
     def _boom(*_args, **_kwargs):
         raise sqlite3.DatabaseError("synthetic: disk I/O error")
 
-    monkeypatch.setattr("pt.sqlite3.connect", _boom)
+    monkeypatch.setattr(sqlite3, "connect", _boom)
 
 
 @pytest.mark.parametrize(

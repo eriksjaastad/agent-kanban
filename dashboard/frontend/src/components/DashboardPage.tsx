@@ -1,6 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { PageShell } from './PageShell';
 import { KanbanBreakdown } from './KanbanBreakdown';
+import { UserFacingWeekly } from './UserFacingWeekly';
+import { LiveSiteChanges } from './LiveSiteChanges';
+import { ReviewHealth } from './ReviewHealth';
+import { SiteStats } from './SiteStats';
 import { ShadowPricingPanel } from './ShadowPricingPanel';
 import { isWithinRecentWindow, timeAgo } from '../utils/recentActivity';
 import './DashboardPage.css';
@@ -308,6 +312,12 @@ export function DashboardPage() {
         <KanbanBreakdown />
 
         {/* Shadow Pricing — subscription value */}
+        {/* Work that reached users vs internal tooling, per week */}
+        <UserFacingWeekly />
+        <LiveSiteChanges />
+        <SiteStats />
+        <ReviewHealth />
+
         <ShadowPricingPanel />
 
         <div className="github-status" role="status">

@@ -181,7 +181,7 @@ def test_both_runs_come_from_one_consistent_snapshot(monkeypatch, conn) -> None:
 
 
 def test_overlapping_refresh_is_refused_with_409_and_stores_nothing(monkeypatch, conn) -> None:
-    import dashboard.app as app_module
+    import dashboard.routes.agentic as app_module
 
     _scan_returns(monkeypatch, [_repo("a", 10)])
     assert app_module._codebase_refresh_lock.acquire(blocking=False)

@@ -105,5 +105,7 @@ PORT="${PT_DASHBOARD_PORT:-8000}"
 # serves traffic and the thing `make test` runs are visibly the same file, and a
 # missing .venv fails loudly here instead of being silently created at boot.
 # The dashboard needs no secrets, so it runs without Doppler.
+# This server is the one that sends calendar-block Discord pings (#8795).
+export PT_BLOCK_PINGS=1
 exec "$PROJECT_DIR/.venv/bin/python" -m uvicorn \
   dashboard.app:app --host "$HOST" --port "$PORT"

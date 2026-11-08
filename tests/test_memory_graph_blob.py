@@ -8,6 +8,7 @@ import numpy as np
 from fastapi.testclient import TestClient
 
 import dashboard.app as dashboard_app
+import dashboard.routes.memory as memory_routes  # noqa: E402
 
 
 def test_memory_graph_decodes_blobs_and_drops_malformed_ones(memory_store, monkeypatch):
@@ -31,7 +32,7 @@ def test_memory_graph_decodes_blobs_and_drops_malformed_ones(memory_store, monke
     )
     conn.commit()
     conn.close()
-    monkeypatch.setitem(dashboard_app._graph_cache, "data", None)
+    monkeypatch.setitem(memory_routes._graph_cache, "data", None)
 
     # The invalid rows are the newest; with room for two nodes the two valid
     # rows must still be the ones selected.

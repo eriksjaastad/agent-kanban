@@ -25,6 +25,12 @@ const PAYLOAD = {
     Review: [],
   },
   totals: { Backlog: 82, 'To Do': 4, 'In Progress': 2, Review: 0 },
+  owner: 'Robin',
+  owner_prefix: 'ROBIN:',
+  waiting_on_owner: [
+    { display_id: 8759, project_id: 'garden-planner', project: 'garden-planner', text: 'ROBIN: request a payment plan', status: 'Backlog', age_days: 20 },
+    { display_id: 8846, project_id: 'project-tracker', project: 'project-tracker', text: 'ROBIN: pick a webhook', status: 'To Do', age_days: 0 },
+  ],
   generated_at: '2026-09-18T22:00:00',
 };
 
@@ -56,6 +62,19 @@ describe('KanbanBreakdown', () => {
     expect(screen.getByText('88 open cards')).toBeInTheDocument();
     expect(screen.getByText('No cards')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'flo-app' })).toHaveAttribute('href', '/kanban/flo-app');
+  });
+
+  it('lists every card waiting on Robin in the order sent, with its age and total', async () => {
+    mockFetch(PAYLOAD);
+    renderBreakdown();
+
+    const heading = await screen.findByRole('heading', { name: /Waiting on Robin/ });
+    expect(heading).toHaveTextContent('2');
+    const rows = within(heading.parentElement as HTMLElement).getAllByRole('listitem');
+    expect(rows.map(row => row.textContent)).toEqual([
+      '#8759 garden-planner: request a payment plan20d',
+      '#8846 project-tracker: pick a webhook0d',
+    ]);
   });
 
   it('keeps each column in the order the API ranked it', async () => {

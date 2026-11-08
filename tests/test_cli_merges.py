@@ -75,7 +75,7 @@ def test_tasks_json_shape_matches_and_parses(db) -> None:
 
 def test_both_tasks_spellings_run_one_implementation(db, monkeypatch) -> None:
     calls = []
-    monkeypatch.setattr(pt, "_tasks_list_impl", lambda *a: calls.append(a))
+    monkeypatch.setattr("commands.tasks._tasks_list_impl", lambda *a: calls.append(a))
     _run(["tasks", "-p", "proj-id", "--board", "--all"])
     _run(["tasks", "list", "-p", "proj-id", "--board", "--all"])
     assert len(calls) == 2 and calls[0] == calls[1]
@@ -132,7 +132,7 @@ def test_help_unknown_command_is_a_usage_error() -> None:
 def test_hygiene_and_scan_help_carry_their_usage_contract() -> None:
     """The hygiene and memory JSON contracts and scan usage live in --help."""
     hygiene_help = CliRunner().invoke(pt.cli, ["hygiene", "--help"]).output
-    for needle in ("Read-only", "pt.hygiene.v1", "exit 6", '"error"', "findings"):
+    for needle in ("Read-only", "pt.hygiene.v2", "exit 6", '"error"', "findings"):
         assert needle in hygiene_help, needle
     # Click rewraps help to the terminal width, so match on collapsed whitespace.
     memory_help = " ".join(CliRunner().invoke(pt.cli, ["memory", "--help"]).output.split())

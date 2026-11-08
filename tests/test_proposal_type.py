@@ -101,7 +101,7 @@ class TestProposalFiltering:
         monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("PT_DB_PATH", str(db_path))
         # Prevent auto-detection from cwd
-        monkeypatch.setattr("pt._detect_project_from_cwd", lambda db: None)
+        monkeypatch.setattr("commands.tasks._detect_project_from_cwd", lambda db: None)
 
         runner = CliRunner()
         result = runner.invoke(tasks_group, ["-p", "test-project"])
@@ -117,7 +117,7 @@ class TestProposalFiltering:
 
         monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("PT_DB_PATH", str(db_path))
-        monkeypatch.setattr("pt._detect_project_from_cwd", lambda db: None)
+        monkeypatch.setattr("commands.tasks._detect_project_from_cwd", lambda db: None)
 
         runner = CliRunner()
         result = runner.invoke(tasks_group, ["-p", "test-project", "--proposals"])

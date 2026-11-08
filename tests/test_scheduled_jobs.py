@@ -365,3 +365,104 @@ def test_a_cron_step_is_an_interval_only_when_its_gaps_are_equal(step):
     gaps = {(b - a) % 60 or 60 for a, b in zip(minutes, minutes[1:] + minutes[:1])}
     words = sj.describe_cron(f"*/{step} * * * *")
     assert words.startswith("every ") == (gaps == {step})
+
+
+def test_each_last_run_says_whether_it_needed_owner(tmp_path, monkeypatch, owner_robin):
+    """#8847: a failed last run, or an open ROBIN: card naming the label, means it needed Robin."""
+    from fastapi.testclient import TestClient
+
+    import dashboard.app as dashboard_app
+    from db.manager import DatabaseManager
+
+    home, root = tmp_path / "home", tmp_path / "projects"
+    for label in ("com.t.ok", "com.t.failed", "com.t.named", "com.t.done-card", "com.t.never"):
+        _write_plist(home / "Library" / "LaunchAgents" / f"{label}.plist", label)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("PROJECTS_ROOT", str(root))
+    exits = {"com.t.ok": 0, "com.t.failed": 1, "com.t.named": 0, "com.t.done-card": 0, "com.t.never": None}
+    monkeypatch.setattr(sj, "launchctl_list", lambda: [{"label": k, "pid": None, "last_exit": v} for k, v in exits.items()])
+    monkeypatch.setattr(sj.subprocess, "run", lambda *a, **k: sj.subprocess.CompletedProcess(a, 0, b"", b""))
+    db = DatabaseManager()
+    db.add_project(project_id="p1", name="p1", path=str(tmp_path / "p1"), status="active")
+    db.add_task("ROBIN: com.t.named needs a new token", "p1", status="Backlog")
+    db.add_task("ROBIN: com.t.done-card was fixed", "p1", status="Done")
+    db.add_task("com.t.ok is mentioned, but not on a ROBIN: card", "p1", status="Backlog")
+
+    data = TestClient(dashboard_app.app).get("/api/scheduled-jobs").json()
+    jobs = {j["label"]: j for j in data["jobs"]}
+    assert (data["owner"], data["owner_prefix"]) == ("Robin", "ROBIN:")
+
+    assert {k: jobs[k].get("needed_owner") for k in exits} == {
+        "com.t.ok": False, "com.t.failed": True, "com.t.named": True, "com.t.done-card": False, "com.t.never": None}
+    named = [c["display_id"] for c in db.get_owner_cards(["Backlog"], "ROBIN:") if "com.t.named" in c["text"]]
+    assert len(named) == 1 and jobs["com.t.named"]["owner_cards"] == named
+    assert "owner_cards" not in jobs["com.t.never"]
+
+
+def test_run_history_judges_each_recorded_run_of_the_last_30_days():
+    """#8847: a run needed Robin if it failed, or a ROBIN: card naming it was opened within 24 h after it."""
+    from datetime import datetime, timedelta
+
+    from dashboard.routes.calendar import run_history
+
+    now = datetime(2026, 11, 30, 12, 0).astimezone()
+
+    def run(label, days_ago, status="success", hour=9):
+        began = (now - timedelta(days=days_ago)).replace(hour=hour, minute=0)
+        return {"loop_name": label, "started_at": began.isoformat(timespec="seconds"), "status": status}
+
+    def card(text, days_ago, hour):
+        made = (now - timedelta(days=days_ago)).replace(hour=hour, minute=0, tzinfo=None)
+        return {"text": text, "created_at": made.isoformat()}
+
+    runs = [run("local.a", 0), run("local.a", 1, "failed"), run("local.a", 2),
+            run("local.b", 3), run("local.b", 5),
+            run("local.b", 0, "running"),
+            run("local.a", 30), run("local.a", 29)]  # the first is outside the window, the second its first day
+    cards = [card("ROBIN: local.b token expired", 3, 20),   # 11 h after b's run 3 days ago
+             card("ROBIN: local.b again", 4, 9),              # 24 h after b's run 5 days ago: too late
+             card("ROBIN: local.a before its run", 2, 8)]     # an hour before a's run: not caused by it
+
+    history = run_history(runs, cards, now)
+
+    assert history["jobs"] == {"local.a": {"runs": 4, "unattended": 3}, "local.b": {"runs": 2, "unattended": 1}}
+    assert history["running"] == 1
+    assert len(history["daily"]) == 30 and history["daily"][0]["date"] == "2026-11-01"
+    by_day = {d["date"]: (d["runs"], d["unattended"]) for d in history["daily"]}
+    assert by_day["2026-11-30"] == (1, 1) and by_day["2026-11-29"] == (1, 0) and by_day["2026-11-27"] == (1, 0)
+    assert by_day["2026-11-01"] == (1, 1) and by_day["2026-11-02"] == (0, 0)
+
+
+def test_the_route_reports_recorded_run_history(tmp_path, monkeypatch, owner_robin):
+    from fastapi.testclient import TestClient
+
+    import dashboard.app as dashboard_app
+    from db.manager import DatabaseManager
+
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("PROJECTS_ROOT", str(tmp_path / "projects"))
+    monkeypatch.setattr(sj, "launchctl_list", lambda: [])
+    monkeypatch.setattr(sj.subprocess, "run", lambda *a, **k: sj.subprocess.CompletedProcess(a, 0, b"", b""))
+    db = DatabaseManager()
+    db.add_project(project_id="p1", name="p1", path=str(tmp_path / "p1"), status="active")
+    for label in ("local.demo", "local.fixed"):
+        run_id = db.loop_run_started(label, datetime_now_iso())
+        db.loop_run_finished(run_id, datetime_now_iso(), 0)
+    # Opened after local.fixed's run, then closed and trimmed off the board: still counts.
+    db.add_task("ROBIN: local.fixed needs a token", "p1", status="Done")
+    assert db.archive_done_tasks(keep_per_project=0) >= 1
+
+    history = TestClient(dashboard_app.app).get("/api/scheduled-jobs").json()["history"]
+    assert history["jobs"] == {"local.demo": {"runs": 1, "unattended": 1}, "local.fixed": {"runs": 1, "unattended": 0}}
+    assert history["daily"][-1] == {"date": history["daily"][-1]["date"], "runs": 2, "unattended": 1}
+
+
+def datetime_now_iso():
+    from datetime import datetime
+    return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+@pytest.fixture
+def owner_robin(tmp_path):
+    """The test's own local config names the board's owner Robin (cards start "ROBIN:")."""
+    (tmp_path / "_local" / "config.toml").write_text('[owner]\nname = "Robin"\n', encoding="utf-8")

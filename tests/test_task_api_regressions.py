@@ -14,6 +14,7 @@ from starlette.requests import Request
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 import dashboard.app as dashboard_app
+import dashboard.common as dashboard_common
 from db.attachment_paths import attachments_dir
 from db.manager import DatabaseManager
 from db.schema import create_database
@@ -100,4 +101,4 @@ def test_attachment_download_requires_live_db_record(tmp_path: Path, monkeypatch
 
 def test_require_local_admin_request_blocks_remote_host():
     with pytest.raises(HTTPException, match="restricted to local requests"):
-        dashboard_app._require_local_admin_request(_request_for_host("remote.example"))
+        dashboard_common._require_local_admin_request(_request_for_host("remote.example"))

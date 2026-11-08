@@ -1,0 +1,449 @@
+{
+  "_delete_permissions": {
+    "columns": [
+      [0, "id", "INTEGER", 0, null, 1],
+      [1, "enabled", "INTEGER", 1, "0", 0]
+    ],
+    "indexes": {}
+  },
+  "_metadata": {
+    "columns": [
+      [0, "key", "TEXT", 0, null, 1],
+      [1, "value", "TEXT", 1, null, 0],
+      [2, "created_at", "TEXT", 1, null, 0]
+    ],
+    "indexes": {
+      "sqlite_autoindex__metadata_1": [1, "pk", 0, ["key"]]
+    }
+  },
+  "ai_agents": {
+    "columns": [
+      [0, "id", "INTEGER", 1, null, 1],
+      [1, "project_id", "TEXT", 1, "''", 0],
+      [2, "agent_name", "TEXT", 1, "''", 0],
+      [3, "role", "TEXT", 0, null, 0],
+      [4, "notes", "TEXT", 0, null, 0]
+    ],
+    "indexes": {
+      "idx_ai_agents_project": [0, "c", 0, ["project_id"]]
+    }
+  },
+  "calendar_event_tasks": {
+    "columns": [
+      [0, "event_id", "INTEGER", 1, null, 1],
+      [1, "task_id", "INTEGER", 1, null, 2],
+      [2, "link_type", "TEXT", 1, "'related'", 0]
+    ],
+    "indexes": {
+      "sqlite_autoindex_calendar_event_tasks_1": [1, "pk", 0, ["event_id", "task_id"]]
+    }
+  },
+  "calendar_events": {
+    "columns": [
+      [0, "id", "INTEGER", 1, null, 1],
+      [1, "title", "TEXT", 1, "''", 0],
+      [2, "description", "TEXT", 0, null, 0],
+      [3, "event_date", "TEXT", 1, "''", 0],
+      [4, "event_time", "TEXT", 0, null, 0],
+      [5, "event_type", "TEXT", 1, "'reminder'", 0],
+      [6, "recurrence", "TEXT", 0, null, 0],
+      [7, "project_id", "TEXT", 0, null, 0],
+      [8, "machine", "TEXT", 0, null, 0],
+      [9, "prompt", "TEXT", 0, null, 0],
+      [10, "notify_before_minutes", "INTEGER", 1, "60", 0],
+      [11, "notified_at", "TEXT", 0, null, 0],
+      [12, "status", "TEXT", 1, "'active'", 0],
+      [13, "created_by", "TEXT", 0, null, 0],
+      [14, "metadata", "TEXT", 0, "'{}'", 0],
+      [15, "created_at", "TEXT", 1, "''", 0],
+      [16, "updated_at", "TEXT", 1, "''", 0],
+      [17, "end_time", "TEXT", 0, null, 0]
+    ],
+    "indexes": {
+      "idx_cal_date": [0, "c", 0, ["event_date"]],
+      "idx_cal_machine": [0, "c", 0, ["machine"]],
+      "idx_cal_project": [0, "c", 0, ["project_id"]],
+      "idx_cal_status": [0, "c", 0, ["status"]]
+    }
+  },
+  "codebase_size_snapshots": {
+    "columns": [
+      [0, "id", "INTEGER", 1, null, 1],
+      [1, "run_id", "TEXT", 1, null, 0],
+      [2, "snapshot_date", "TEXT", 1, null, 0],
+      [3, "project", "TEXT", 1, null, 0],
+      [4, "code_lines", "INTEGER", 1, null, 0],
+      [5, "test_lines", "INTEGER", 1, null, 0],
+      [6, "doc_files", "INTEGER", 1, null, 0],
+      [7, "doc_lines", "INTEGER", 1, null, 0],
+      [8, "last_commit", "TEXT", 0, null, 0],
+      [9, "commits_90d", "INTEGER", 0, null, 0],
+      [10, "scanned_at", "TEXT", 1, null, 0]
+    ],
+    "indexes": {
+      "sqlite_autoindex_codebase_size_snapshots_1": [1, "u", 0, ["run_id", "project"]]
+    }
+  },
+  "cron_jobs": {
+    "columns": [
+      [0, "id", "INTEGER", 0, null, 1],
+      [1, "project_id", "TEXT", 1, null, 0],
+      [2, "schedule", "TEXT", 1, null, 0],
+      [3, "command", "TEXT", 1, null, 0],
+      [4, "description", "TEXT", 0, null, 0],
+      [5, "last_run", "TEXT", 0, null, 0],
+      [6, "is_active", "BOOLEAN", 0, "1", 0],
+      [7, "machine", "TEXT", 0, null, 0]
+    ],
+    "indexes": {
+      "idx_cron_jobs_project": [0, "c", 0, ["project_id"]]
+    }
+  },
+  "delete_attempt_log": {
+    "columns": [
+      [0, "id", "INTEGER", 0, null, 1],
+      [1, "table_name", "TEXT", 1, null, 0],
+      [2, "attempted_at", "TEXT", 1, null, 0],
+      [3, "reason", "TEXT", 1, null, 0]
+    ],
+    "indexes": {}
+  },
+  "delete_audit_log": {
+    "columns": [
+      [0, "id", "INTEGER", 0, null, 1],
+      [1, "table_name", "TEXT", 1, null, 0],
+      [2, "deleted_id", "TEXT", 1, null, 0],
+      [3, "deleted_data", "TEXT", 1, null, 0],
+      [4, "deleted_at", "TEXT", 1, null, 0],
+      [5, "source", "TEXT", 0, "'unknown'", 0]
+    ],
+    "indexes": {
+      "idx_delete_audit_table": [0, "c", 0, ["table_name"]],
+      "idx_delete_audit_time": [0, "c", 0, ["deleted_at"]]
+    }
+  },
+  "handoffs": {
+    "columns": [
+      [0, "id", "INTEGER", 0, null, 1],
+      [1, "card_id", "INTEGER", 1, null, 0],
+      [2, "project", "TEXT", 0, null, 0],
+      [3, "branch", "TEXT", 0, null, 0],
+      [4, "file_list", "TEXT", 1, "'[]'", 0],
+      [5, "intent", "TEXT", 1, null, 0],
+      [6, "current_status", "TEXT", 1, null, 0],
+      [7, "next_command", "TEXT", 1, null, 0],
+      [8, "discard_or_preserve_guidance", "TEXT", 1, null, 0],
+      [9, "record_type", "TEXT", 1, "'unfinished'", 0],
+      [10, "pr_exempt_reason", "TEXT", 0, null, 0],
+      [11, "pr_exempt_disposition", "TEXT", 0, null, 0],
+      [12, "pr_exempt_approver", "TEXT", 0, null, 0],
+      [13, "created_at", "TEXT", 1, null, 0],
+      [14, "created_by", "TEXT", 0, null, 0],
+      [15, "resolved_at", "TEXT", 0, null, 0],
+      [16, "resolved_note", "TEXT", 0, null, 0]
+    ],
+    "indexes": {
+      "idx_handoffs_card_id": [0, "c", 0, ["card_id"]],
+      "idx_handoffs_project": [0, "c", 0, ["project"]],
+      "idx_handoffs_resolved_at": [0, "c", 1, ["resolved_at"]]
+    }
+  },
+  "ideas": {
+    "columns": [
+      [0, "id", "INTEGER", 1, null, 1],
+      [1, "text", "TEXT", 1, "''", 0],
+      [2, "created_at", "TEXT", 1, "''", 0],
+      [3, "updated_at", "TEXT", 1, "''", 0]
+    ],
+    "indexes": {}
+  },
+  "job_submissions": {
+    "columns": [
+      [0, "id", "INTEGER", 0, null, 1],
+      [1, "job_id", "INTEGER", 1, null, 0],
+      [2, "submitted_at", "TEXT", 1, null, 0],
+      [3, "resume_path", "TEXT", 0, null, 0],
+      [4, "cover_letter_path", "TEXT", 0, null, 0],
+      [5, "notes", "TEXT", 0, null, 0]
+    ],
+    "indexes": {
+      "idx_job_submissions_job_submitted": [0, "c", 0, ["job_id", "submitted_at"]],
+      "idx_job_submissions_submitted_at": [0, "c", 0, ["submitted_at"]]
+    }
+  },
+  "jobs": {
+    "columns": [
+      [0, "id", "INTEGER", 0, null, 1],
+      [1, "company", "TEXT", 1, null, 0],
+      [2, "title", "TEXT", 1, null, 0],
+      [3, "location", "TEXT", 0, null, 0],
+      [4, "url", "TEXT", 1, null, 0],
+      [5, "source", "TEXT", 1, "'manual'", 0],
+      [6, "posted_date", "TEXT", 0, null, 0],
+      [7, "first_seen", "TEXT", 1, "date('now')", 0],
+      [8, "category", "TEXT", 1, "'Other'", 0],
+      [9, "raw", "TEXT", 0, null, 0],
+      [10, "deleted_at", "TEXT", 0, null, 0],
+      [11, "kind", "TEXT", 1, "'job'", 0],
+      [12, "volunteering_since", "TEXT", 0, null, 0]
+    ],
+    "indexes": {
+      "idx_jobs_category": [0, "c", 0, ["category"]],
+      "idx_jobs_deleted_at": [0, "c", 0, ["deleted_at"]],
+      "idx_jobs_first_seen": [0, "c", 0, ["first_seen"]],
+      "idx_jobs_kind": [0, "c", 0, ["kind"]],
+      "sqlite_autoindex_jobs_1": [1, "u", 0, ["url"]]
+    }
+  },
+  "loop_executions": {
+    "columns": [
+      [0, "id", "INTEGER", 0, null, 1],
+      [1, "loop_name", "TEXT", 1, null, 0],
+      [2, "started_at", "TEXT", 1, null, 0],
+      [3, "completed_at", "TEXT", 0, null, 0],
+      [4, "status", "TEXT", 1, null, 0],
+      [5, "error_message", "TEXT", 0, null, 0],
+      [6, "cards_created", "INTEGER", 0, "0", 0],
+      [7, "metadata", "TEXT", 0, null, 0]
+    ],
+    "indexes": {
+      "idx_loop_executions_name_time": [0, "c", 0, ["loop_name", "started_at"]]
+    }
+  },
+  "migrations": {
+    "columns": [
+      [0, "id", "INTEGER", 0, null, 1],
+      [1, "name", "TEXT", 1, null, 0],
+      [2, "project_id", "TEXT", 0, null, 0],
+      [3, "started_at", "TEXT", 1, null, 0],
+      [4, "finished_at", "TEXT", 0, null, 0],
+      [5, "status", "TEXT", 1, "'recording'", 0],
+      [6, "baseline_head", "TEXT", 0, null, 0],
+      [7, "manifest_path", "TEXT", 0, null, 0],
+      [8, "created_by", "TEXT", 0, null, 0]
+    ],
+    "indexes": {
+      "idx_migrations_name": [0, "c", 0, ["name"]],
+      "idx_migrations_project": [0, "c", 0, ["project_id"]],
+      "idx_migrations_status": [0, "c", 1, ["status"]]
+    }
+  },
+  "outreach_contacts": {
+    "columns": [
+      [0, "id", "INTEGER", 1, null, 1],
+      [1, "name", "TEXT", 1, null, 0],
+      [2, "created_at", "TEXT", 1, null, 0],
+      [3, "contacted_at", "TEXT", 0, null, 0],
+      [4, "replied_at", "TEXT", 0, null, 0],
+      [5, "deleted_at", "TEXT", 0, null, 0],
+      [6, "updated_at", "TEXT", 1, null, 0]
+    ],
+    "indexes": {
+      "idx_outreach_contacts_deleted_replied": [0, "c", 0, ["deleted_at", "replied_at"]]
+    }
+  },
+  "project_checkouts": {
+    "columns": [
+      [0, "id", "INTEGER", 1, null, 1],
+      [1, "project_id", "TEXT", 1, null, 0],
+      [2, "machine", "TEXT", 1, null, 0],
+      [3, "holder", "TEXT", 1, null, 0],
+      [4, "note", "TEXT", 0, null, 0],
+      [5, "checked_out_at", "TEXT", 1, null, 0],
+      [6, "checked_in_at", "TEXT", 0, null, 0],
+      [7, "checked_in_by", "TEXT", 0, null, 0],
+      [8, "task_id", "INTEGER", 0, null, 0]
+    ],
+    "indexes": {
+      "idx_project_checkouts_open": [1, "c", 1, ["project_id"]]
+    }
+  },
+  "project_info": {
+    "columns": [
+      [0, "id", "INTEGER", 1, null, 1],
+      [1, "project_id", "TEXT", 0, null, 0],
+      [2, "key", "TEXT", 1, "''", 0],
+      [3, "value", "TEXT", 1, "''", 0],
+      [4, "updated_at", "TEXT", 1, "''", 0]
+    ],
+    "indexes": {
+      "idx_project_info_project": [0, "c", 0, ["project_id"]],
+      "idx_project_info_scope_key": [0, "c", 0, ["project_id", "key"]]
+    }
+  },
+  "projects": {
+    "columns": [
+      [0, "id", "TEXT", 1, null, 1],
+      [1, "name", "TEXT", 1, "''", 0],
+      [2, "path", "TEXT", 1, "''", 0],
+      [3, "status", "TEXT", 1, "''", 0],
+      [4, "description", "TEXT", 0, null, 0],
+      [5, "phase", "TEXT", 0, null, 0],
+      [6, "last_modified", "TEXT", 0, null, 0],
+      [7, "created_at", "TEXT", 1, "''", 0],
+      [8, "completion_pct", "INTEGER", 0, "0", 0],
+      [9, "is_infrastructure", "BOOLEAN", 0, "0", 0],
+      [10, "has_index", "BOOLEAN", 0, "0", 0],
+      [11, "index_is_valid", "BOOLEAN", 0, "0", 0],
+      [12, "index_updated_at", "TEXT", 0, null, 0],
+      [13, "project_type", "TEXT", 0, "'standard'", 0],
+      [14, "health_score", "INTEGER", 0, null, 0],
+      [15, "health_grade", "TEXT", 0, null, 0],
+      [16, "scaffolding_version", "TEXT", 0, null, 0],
+      [17, "rules_version", "TEXT", 0, null, 0],
+      [18, "scaffolding_applied_at", "TEXT", 0, null, 0],
+      [19, "tier", "INTEGER", 0, null, 0],
+      [20, "healthcheck_cmd", "TEXT", 0, null, 0],
+      [21, "commands_to_run", "TEXT", 0, null, 0],
+      [22, "cron_jobs_config", "TEXT", 0, null, 0],
+      [23, "template_version_installed", "TEXT", 0, null, 0],
+      [24, "template_version_expected", "TEXT", 0, null, 0],
+      [25, "drift_status", "TEXT", 0, null, 0],
+      [26, "autonomy_level", "TEXT", 0, "'report'", 0],
+      [27, "machine", "TEXT", 0, null, 0]
+    ],
+    "indexes": {
+      "idx_projects_last_modified": [0, "c", 0, ["last_modified"]],
+      "idx_projects_name": [0, "c", 0, ["name"]],
+      "idx_projects_status": [0, "c", 0, ["status"]],
+      "sqlite_autoindex_projects_1": [1, "pk", 0, ["id"]]
+    }
+  },
+  "reminders": {
+    "columns": [
+      [0, "id", "INTEGER", 1, null, 1],
+      [1, "name", "TEXT", 1, null, 0],
+      [2, "purpose", "TEXT", 0, null, 0],
+      [3, "location", "TEXT", 0, null, 0],
+      [4, "created_at", "TEXT", 1, null, 0],
+      [5, "built_in_at", "TEXT", 0, null, 0],
+      [6, "deleted_at", "TEXT", 0, null, 0],
+      [7, "updated_at", "TEXT", 1, null, 0]
+    ],
+    "indexes": {}
+  },
+  "schema_migrations": {
+    "columns": [
+      [0, "version", "INTEGER", 0, null, 1],
+      [1, "name", "TEXT", 1, null, 0],
+      [2, "applied_at", "TEXT", 1, null, 0]
+    ],
+    "indexes": {}
+  },
+  "service_dependencies": {
+    "columns": [
+      [0, "id", "INTEGER", 1, null, 1],
+      [1, "project_id", "TEXT", 1, "''", 0],
+      [2, "service_name", "TEXT", 1, "''", 0],
+      [3, "purpose", "TEXT", 0, null, 0],
+      [4, "cost_monthly", "REAL", 0, null, 0]
+    ],
+    "indexes": {
+      "idx_service_deps_project": [0, "c", 0, ["project_id"]]
+    }
+  },
+  "site_stats": {
+    "columns": [
+      [0, "id", "INTEGER", 0, null, 1],
+      [1, "site", "TEXT", 1, null, 0],
+      [2, "ran_at", "TEXT", 1, null, 0],
+      [3, "exit_code", "INTEGER", 1, null, 0],
+      [4, "sources", "TEXT", 0, null, 0]
+    ],
+    "indexes": {
+      "idx_site_stats_site_time": [0, "c", 0, ["site", "ran_at"]]
+    }
+  },
+  "task_attachments": {
+    "columns": [
+      [0, "id", "INTEGER", 1, null, 1],
+      [1, "task_id", "INTEGER", 1, "0", 0],
+      [2, "filename", "TEXT", 1, "''", 0],
+      [3, "stored_name", "TEXT", 1, "''", 0],
+      [4, "mime_type", "TEXT", 0, null, 0],
+      [5, "size_bytes", "INTEGER", 0, null, 0],
+      [6, "uploaded_at", "TEXT", 0, "datetime('now')", 0],
+      [7, "uploaded_by", "TEXT", 0, "'user'", 0]
+    ],
+    "indexes": {
+      "idx_attachments_task_id": [0, "c", 0, ["task_id"]]
+    }
+  },
+  "task_display_ids": {
+    "columns": [
+      [0, "task_id", "INTEGER", 1, null, 1],
+      [1, "display_id", "INTEGER", 1, null, 0]
+    ],
+    "indexes": {
+      "sqlite_autoindex_task_display_ids_1": [1, "u", 0, ["display_id"]]
+    }
+  },
+  "task_history": {
+    "columns": [
+      [0, "id", "INTEGER", 1, null, 1],
+      [1, "task_id", "INTEGER", 1, "0", 0],
+      [2, "project_id", "TEXT", 1, "''", 0],
+      [3, "event_type", "TEXT", 1, "''", 0],
+      [4, "old_status", "TEXT", 0, null, 0],
+      [5, "new_status", "TEXT", 0, null, 0],
+      [6, "timestamp", "TEXT", 1, "''", 0]
+    ],
+    "indexes": {
+      "idx_history_event": [0, "c", 0, ["event_type"]],
+      "idx_history_project": [0, "c", 0, ["project_id"]],
+      "idx_history_timestamp": [0, "c", 0, ["timestamp"]]
+    }
+  },
+  "task_notes_history": {
+    "columns": [
+      [0, "id", "INTEGER", 1, null, 1],
+      [1, "task_id", "INTEGER", 1, null, 0],
+      [2, "project_id", "TEXT", 1, null, 0],
+      [3, "old_notes", "TEXT", 0, null, 0],
+      [4, "new_notes", "TEXT", 0, null, 0],
+      [5, "source", "TEXT", 1, "'unknown'", 0],
+      [6, "timestamp", "TEXT", 1, null, 0]
+    ],
+    "indexes": {
+      "idx_task_notes_history_task_timestamp": [0, "c", 0, ["task_id", "timestamp"]]
+    }
+  },
+  "tasks": {
+    "columns": [
+      [0, "id", "INTEGER", 1, null, 1],
+      [1, "text", "TEXT", 1, "''", 0],
+      [2, "status", "TEXT", 1, "'Backlog'", 0],
+      [3, "project_id", "TEXT", 1, "''", 0],
+      [4, "priority", "TEXT", 0, null, 0],
+      [5, "created_at", "TEXT", 1, "''", 0],
+      [6, "updated_at", "TEXT", 1, "''", 0],
+      [7, "completed_at", "TEXT", 0, null, 0],
+      [8, "prompt", "TEXT", 0, null, 0],
+      [9, "task_type", "TEXT", 1, "'manual'", 0],
+      [10, "review_comment", "TEXT", 0, null, 0],
+      [11, "archived_at", "TEXT", 0, null, 0],
+      [12, "title", "TEXT", 0, null, 0],
+      [13, "notes", "TEXT", 0, null, 0],
+      [14, "commit_sha", "TEXT", 0, null, 0],
+      [15, "category", "TEXT", 0, null, 0],
+      [16, "parent_id", "INTEGER", 0, null, 0],
+      [17, "blocked_by", "TEXT", 0, null, 0],
+      [18, "sequence_order", "INTEGER", 0, null, 0],
+      [19, "source", "TEXT", 0, null, 0],
+      [20, "severity", "TEXT", 0, null, 0],
+      [21, "detected_at", "TEXT", 0, null, 0],
+      [22, "evidence", "TEXT", 0, null, 0],
+      [23, "allowed_paths", "TEXT", 0, null, 0],
+      [24, "definition_of_done", "TEXT", 0, null, 0],
+      [25, "machine", "TEXT", 0, null, 0],
+      [26, "created_by", "TEXT", 0, null, 0]
+    ],
+    "indexes": {
+      "idx_tasks_blocked": [0, "c", 1, ["blocked_by"]],
+      "idx_tasks_completed": [0, "c", 1, ["completed_at"]],
+      "idx_tasks_parent": [0, "c", 0, ["parent_id"]],
+      "idx_tasks_project": [0, "c", 0, ["project_id"]],
+      "idx_tasks_status": [0, "c", 0, ["status"]]
+    }
+  }
+}

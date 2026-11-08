@@ -22,6 +22,12 @@ from db.manager import DatabaseManager
 from db.schema import create_database
 
 
+@pytest.fixture
+def owner_robin(tmp_path):
+    """The test's own local config names the board's owner Robin (cards start "ROBIN:")."""
+    (tmp_path / "_local" / "config.toml").write_text('[owner]\nname = "Robin"\n', encoding="utf-8")
+
+
 def _setup_db(tmp_path: Path) -> tuple[Path, DatabaseManager]:
     db_path = tmp_path / "test.db"
     create_database(db_path)
@@ -108,3 +114,79 @@ def test_counts_drop_archived_rows_unless_asked(tmp_path: Path):
 
     assert visible == []
     assert archived == [{"project_id": "holoapp", "status": "Done", "count": 1}]
+
+
+def test_waiting_on_owner_lists_open_owner_cards_oldest_first(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+                                                             owner_robin):
+    db_path, db = _setup_db(tmp_path)
+    newer = db.add_task("ROBIN: newer ask", "holoapp", status="To Do")["id"]
+    older = db.add_task("ROBIN: older ask", "project-tracker", status="Backlog")["id"]
+    db.add_task("ROBIN: answered", "holoapp", status="Done")
+    db.add_task("ROBIN: an idea", "holoapp", status="Backlog", task_type="proposal")
+    db.add_task("robin: not the prefix", "holoapp", status="Backlog")
+    db.add_task("ordinary card mentioning ROBIN:", "holoapp", status="Backlog")
+    with db._get_conn() as conn:
+        conn.execute("UPDATE tasks SET created_at = '2026-01-01T09:00:00' WHERE id = ?", (older,))
+        conn.commit()
+
+    data = _breakdown(tmp_path, monkeypatch, db_path)
+    waiting = data["waiting_on_owner"]
+    assert (data["owner"], data["owner_prefix"]) == ("Robin", "ROBIN:")
+
+    assert [card["text"] for card in waiting] == ["ROBIN: older ask", "ROBIN: newer ask"]
+    assert waiting[0]["project"] == "Project Tracker"
+    assert waiting[0]["display_id"] == db.get_task_display_id(older)
+    assert waiting[0]["age_days"] > 300 and waiting[1]["age_days"] == 0
+    assert db.get_task_display_id(newer) == waiting[1]["display_id"]
+
+
+def test_weekly_split_follows_the_editable_user_facing_list(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    from datetime import date, timedelta
+
+    db_path, db = _setup_db(tmp_path)
+    monday = date.today() - timedelta(days=date.today().weekday())
+    done_on = {
+        ("holoapp", "Done"): monday,
+        ("project-tracker", "Done"): monday,
+        ("holoapp", "Done", 3): monday - timedelta(weeks=3),
+        ("holoapp", "Done", 9): monday - timedelta(weeks=9),   # outside the 8 weeks
+        ("holoapp", "Cancelled"): monday,
+    }
+    cards = {db.add_task("card", key[0], status=key[1])["id"]: day for key, day in done_on.items()}
+    with db._get_conn() as conn:
+        for card, day in cards.items():
+            conn.execute("UPDATE tasks SET completed_at = ? WHERE id = ?", (f"{day}T10:00:00", card))
+        conn.commit()
+    config = tmp_path / "config.toml"
+    monkeypatch.setenv("PT_CONFIG", str(config))
+    monkeypatch.setenv("PT_DB_PATH", str(db_path))
+    asked = []
+    monkeypatch.setattr(dashboard_app, "merged_prs_weekly", lambda uf, starts: asked.append(uf) or {"weeks": []})
+    client = TestClient(dashboard_app.app)
+
+    config.write_text('[dashboard]\nuser_facing = ["holoapp"]\n')
+    weeks = client.get("/api/stats/user-facing-weekly").json()["weeks"]
+    assert [w["week_start"] for w in weeks] == [str(monday - timedelta(weeks=n)) for n in range(7, -1, -1)]
+    assert weeks[-1] == {"week_start": str(monday), "user_facing": 1, "internal": 1}
+    assert weeks[-4] == {"week_start": str(monday - timedelta(weeks=3)), "user_facing": 1, "internal": 0}
+    assert sum(w["user_facing"] + w["internal"] for w in weeks) == 3
+
+    config.write_text('[dashboard]\nuser_facing = []\n')
+    assert client.get("/api/stats/user-facing-weekly").json()["weeks"][-1]["internal"] == 2
+    assert asked == [frozenset({"holoapp"}), frozenset()]
+
+    config.write_text('[dashboard]\nuser_facing = "holoapp"\n')
+    response = client.get("/api/stats/user-facing-weekly")
+    assert response.status_code == 500 and "user_facing must be a list" in response.json()["detail"]
+
+
+def test_an_unnamed_owner_is_owner_and_no_name_is_built_in(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """#8961: with no [owner] in the local config, the board waits on "Owner"."""
+    db_path, db = _setup_db(tmp_path)
+    db.add_task("OWNER: pick a name", "holoapp", status="Backlog")
+    db.add_task("ROBIN: someone else's ask", "holoapp", status="Backlog")
+
+    data = _breakdown(tmp_path, monkeypatch, db_path)
+
+    assert (data["owner"], data["owner_prefix"]) == ("Owner", "OWNER:")
+    assert [card["text"] for card in data["waiting_on_owner"]] == ["OWNER: pick a name"]

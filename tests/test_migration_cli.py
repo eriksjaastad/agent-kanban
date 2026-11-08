@@ -310,7 +310,7 @@ def test_migration_finish_revert_trashes_untracked(repo_env) -> None:
 def test_revert_paths_handles_already_missing_untracked(repo_env) -> None:
     """_revert_paths logs 'already missing' for untracked entries whose file
     has been deleted before send2trash is called (race-condition path)."""
-    from pt import _revert_paths
+    from commands.migration import _revert_paths
 
     entries = [{"path": "VANISHED.md", "classification": "untracked"}]
     restored, trashed, errors = _revert_paths(repo_env["repo_dir"], entries)

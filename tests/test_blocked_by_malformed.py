@@ -124,23 +124,23 @@ def _run(coro):
     return asyncio.get_event_loop_policy().get_event_loop().run_until_complete(coro)
 
 def test_dashboard_start_refuses_with_400_and_the_reason(board, malformed_card, monkeypatch):
-    import dashboard.app as dashboard_app
+    import dashboard.routes.tasks as tasks_routes
 
-    monkeypatch.setattr(dashboard_app, "DatabaseManager", lambda *a, **k: board)
-    request = dashboard_app.TaskUpdateRequest(status="In Progress")
+    monkeypatch.setattr(tasks_routes, "DatabaseManager", lambda *a, **k: board)
+    request = tasks_routes.TaskUpdateRequest(status="In Progress")
     with pytest.raises(HTTPException) as excinfo:
         # Write handlers are async wrappers that run on the single write thread.
-        _run(dashboard_app.update_task(malformed_card["id"], request))
+        _run(tasks_routes.update_task(malformed_card["id"], request))
     assert excinfo.value.status_code == 400
     assert "blocked_by unreadable" in excinfo.value.detail
     assert board.get_task(malformed_card["id"])["status"] == "To Do"
 
 
 def test_dashboard_task_detail_shows_the_blocking_error(board, malformed_card, monkeypatch):
-    import dashboard.app as dashboard_app
+    import dashboard.routes.tasks as tasks_routes
 
-    monkeypatch.setattr(dashboard_app, "DatabaseManager", lambda *a, **k: board)
-    payload = dashboard_app.get_task(malformed_card["id"])
+    monkeypatch.setattr(tasks_routes, "DatabaseManager", lambda *a, **k: board)
+    payload = tasks_routes.get_task(malformed_card["id"])
     assert payload["is_blocked"] is True
     assert payload["blocked_by_ids"] == []
     assert payload["incomplete_blocking_ids"] == []
@@ -149,10 +149,10 @@ def test_dashboard_task_detail_shows_the_blocking_error(board, malformed_card, m
 
 
 def test_dashboard_board_listing_renders_the_card_blocked(board, malformed_card, monkeypatch):
-    import dashboard.app as dashboard_app
+    import dashboard.routes.tasks as tasks_routes
 
-    monkeypatch.setattr(dashboard_app, "DatabaseManager", lambda *a, **k: board)
-    payload = dashboard_app.list_tasks(project_id=PROJECT, status_filter=None)
+    monkeypatch.setattr(tasks_routes, "DatabaseManager", lambda *a, **k: board)
+    payload = tasks_routes.list_tasks(project_id=PROJECT, status_filter=None)
     rows = payload["tasks"] if isinstance(payload, dict) else payload
     row = next(r for r in rows if r["id"] == str(malformed_card["id"]))
     assert row["is_blocked"] is True

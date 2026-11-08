@@ -74,7 +74,7 @@ def test_clean_portfolio_exit_0_and_schema(tmp_path: Path) -> None:
     payload = json.loads(result.output)
 
     # Schema stability
-    assert payload["schema_version"] == "pt.hygiene.v1"
+    assert payload["schema_version"] == "pt.hygiene.v2"
     assert payload["ok"] is True
     assert payload["command"] == "hygiene"
     assert "scanned_at" in payload
@@ -93,7 +93,6 @@ def test_clean_portfolio_exit_0_and_schema(tmp_path: Path) -> None:
         "local_only_branches",
         "branches_ahead_of_remote",
         "stashes",
-        "open_pr_drift",
         "stale_progress_md",
     ):
         assert key in findings, f"missing finding key: {key}"
@@ -244,7 +243,7 @@ def test_quiet_flag_hides_clean_repos(tmp_path: Path) -> None:
 
 
 def test_json_schema_all_keys_present(tmp_path: Path) -> None:
-    """Every documented key in the pt.hygiene.v1 schema must be present."""
+    """Every documented key in the pt.hygiene.v2 schema must be present."""
     repo = tmp_path / "schema-test"
     repo.mkdir()
     _init_git_repo(repo)
@@ -273,7 +272,6 @@ def test_json_schema_all_keys_present(tmp_path: Path) -> None:
         "local_only_branches",
         "branches_ahead_of_remote",
         "stashes",
-        "open_pr_drift",
         "stale_progress_md",
     }
     assert required_findings <= set(entry["findings"].keys())
@@ -334,7 +332,7 @@ def test_broken_repo_isolated_in_scan(tmp_path: Path, monkeypatch: pytest.Monkey
 def test_error_entry_omits_findings_per_schema_contract(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """pt.hygiene.v1 contract: error entries omit `findings` entirely;
+    """pt.hygiene.v2 contract: error entries omit `findings` entirely;
     successful entries include all six finding keys.
 
     Naive consumers MUST branch on `error` before iterating `findings`.
@@ -380,7 +378,6 @@ def test_error_entry_omits_findings_per_schema_contract(
         "local_only_branches",
         "branches_ahead_of_remote",
         "stashes",
-        "open_pr_drift",
         "stale_progress_md",
     }
     assert expected_keys <= set(clean["findings"].keys())
@@ -499,124 +496,6 @@ def test_branch_ahead_of_remote_finding(tmp_path: Path) -> None:
     assert main_entry["ahead"] >= 1
 
 
-# ---------------------------------------------------------------------------
-# open_pr_drift (MEDIUM #3b)
-# ---------------------------------------------------------------------------
-
-
-def test_open_pr_drift_populated_via_mocked_gh(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Mock gh CLI so the bot-PR-older-than-24h path fires."""
-    import pt as pt_mod
-    from datetime import datetime, timezone, timedelta
-
-    repo = tmp_path / "pr-drift-repo"
-    repo.mkdir()
-    _init_git_repo(repo)
-    # Need a remote origin so the slug can be parsed
-    subprocess.run(
-        ["git", "remote", "add", "origin", "https://github.com/example/pr-drift-repo.git"],
-        cwd=str(repo), check=True, capture_output=True,
-    )
-
-    monkeypatch.setattr(pt_mod.shutil, "which", lambda name: "/usr/local/bin/gh")
-
-    old_iso = (datetime.now(timezone.utc) - timedelta(hours=48)).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
-    fake_prs = [
-        {"number": 42, "title": "bot pr (old)", "author": {"login": "renovate[bot]"}, "createdAt": old_iso},
-        {"number": 43, "title": "human pr", "author": {"login": "humanuser"}, "createdAt": old_iso},
-    ]
-
-    real_run = subprocess.run
-
-    def fake_run(cmd, *args, **kwargs):
-        if isinstance(cmd, list) and cmd and cmd[0].endswith("gh") and "pr" in cmd:
-            class R:
-                returncode = 0
-                stdout = json.dumps(fake_prs)
-                stderr = ""
-            return R()
-        return real_run(cmd, *args, **kwargs)
-
-    monkeypatch.setattr(pt_mod.subprocess, "run", fake_run)
-
-    result = _invoke(tmp_path, ["hygiene", "--json", "--project", "pr-drift-repo"])
-
-    payload = json.loads(result.output)
-    repo_result = payload["results"][0]
-    pr_drift = repo_result["findings"]["open_pr_drift"]
-    assert pr_drift["available"] is True
-    assert pr_drift["present"] is True
-    numbers = [pr["number"] for pr in pr_drift["prs"]]
-    assert 42 in numbers
-    # Human PR must NOT be reported
-    assert 43 not in numbers
-
-
-def test_open_pr_drift_graceful_when_gh_missing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """When gh is not on PATH, open_pr_drift reports available=False without crashing."""
-    import pt as pt_mod
-
-    repo = tmp_path / "no-gh-repo"
-    repo.mkdir()
-    _init_git_repo(repo)
-
-    monkeypatch.setattr(pt_mod.shutil, "which", lambda name: None)
-
-    result = _invoke(tmp_path, ["hygiene", "--json", "--project", "no-gh-repo"])
-
-    payload = json.loads(result.output)
-    repo_result = payload["results"][0]
-    pr_drift = repo_result["findings"]["open_pr_drift"]
-    assert pr_drift["available"] is False
-    assert pr_drift["present"] is False
-    assert "reason" in pr_drift
-
-
-def test_open_pr_drift_graceful_when_gh_returns_nonzero(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """gh exits non-zero (e.g. auth error) -> available=False, no crash."""
-    import pt as pt_mod
-
-    repo = tmp_path / "gh-fail-repo"
-    repo.mkdir()
-    _init_git_repo(repo)
-    subprocess.run(
-        ["git", "remote", "add", "origin", "https://github.com/example/gh-fail-repo.git"],
-        cwd=str(repo), check=True, capture_output=True,
-    )
-
-    monkeypatch.setattr(pt_mod.shutil, "which", lambda name: "/usr/local/bin/gh")
-
-    real_run = subprocess.run
-
-    def fake_run(cmd, *args, **kwargs):
-        if isinstance(cmd, list) and cmd and cmd[0].endswith("gh") and "pr" in cmd:
-            class R:
-                returncode = 4
-                stdout = ""
-                stderr = "auth error: not logged in"
-            return R()
-        return real_run(cmd, *args, **kwargs)
-
-    monkeypatch.setattr(pt_mod.subprocess, "run", fake_run)
-
-    result = _invoke(tmp_path, ["hygiene", "--json", "--project", "gh-fail-repo"])
-
-    payload = json.loads(result.output)
-    repo_result = payload["results"][0]
-    pr_drift = repo_result["findings"]["open_pr_drift"]
-    assert pr_drift["available"] is False
-    assert pr_drift["present"] is False
-    assert "auth error" in pr_drift.get("reason", "")
-
-
 def test_git_status_failure_is_a_scan_error_not_clean(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -639,18 +518,19 @@ def test_git_status_failure_is_a_scan_error_not_clean(
     assert "findings" not in entry
 
 
-def test_git_status_nonzero_exit_is_a_scan_error(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("command", ["status", "branch", "for-each-ref", "stash"])
+def test_a_nonzero_git_exit_is_a_scan_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str
 ) -> None:
-    """#6900: a nonzero `git status` with empty output is not a clean tree."""
+    """#6900: a git listing that fails with empty output is not a clean repo."""
     import pt as pt_mod
 
     _init_git_repo(tmp_path / "repo")
 
     def failing_git(repo_dir, args, timeout=10):
-        if args[:1] == ["status"]:
+        if args[:1] == [command]:
             return "", 128
-        return "", 0
+        return {"for-each-ref": "", "branch": ""}.get(args[0], ""), 0
 
     monkeypatch.setattr(pt_mod, "_run_git", failing_git)
     result = _invoke(tmp_path, ["hygiene", "--json"])

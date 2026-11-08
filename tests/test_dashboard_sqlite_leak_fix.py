@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 import dashboard.app as dashboard_app
+import dashboard.routes.memory as memory_routes  # noqa: E402
 
 
 class _SpyConnection(sqlite3.Connection):
@@ -106,9 +107,9 @@ def test_memory_endpoint_closes_connection_on_query_failure(
     monkeypatch, brain_db, endpoint, check_result
 ):
     # Bypass the module-level graph cache so the failing query actually runs.
-    dashboard_app._graph_cache["data"] = None
-    dashboard_app._graph_cache["timestamp"] = 0
-    dashboard_app._graph_cache["params"] = None
+    memory_routes._graph_cache["data"] = None
+    memory_routes._graph_cache["timestamp"] = 0
+    memory_routes._graph_cache["params"] = None
 
     _force_brain_db_present(monkeypatch, brain_db)
 
@@ -117,7 +118,7 @@ def test_memory_endpoint_closes_connection_on_query_failure(
     # get_event_loop() afterwards and gets a closed one (see
     # test_dashboard_blocked_resolution.py for the same note).
     loop = asyncio.get_event_loop_policy().get_event_loop()
-    result = loop.run_until_complete(getattr(dashboard_app, endpoint)())
+    result = loop.run_until_complete(getattr(memory_routes, endpoint)())
 
     assert _SpyConnection.close_calls == 1
     assert check_result(result)

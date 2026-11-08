@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 import dashboard.app as dashboard_app  # noqa: E402
+import dashboard.routes.tasks as tasks_routes  # noqa: E402
 from db.backend_manager import NotesConflictError  # noqa: E402
 from db.manager import DatabaseManager  # noqa: E402
 from db.schema import create_database  # noqa: E402
@@ -258,7 +259,7 @@ def test_endpoint_404_when_task_deleted_during_request(db, client, monkeypatch, 
         if when == "final_attempt":
             # every attempt loses the CAS race; the last one also finds the row gone
             calls["n"] += 1
-            if calls["n"] == dashboard_app.CHECKLIST_TOGGLE_MAX_ATTEMPTS:
+            if calls["n"] == tasks_routes.CHECKLIST_TOGGLE_MAX_ATTEMPTS:
                 self.delete_task(task_id)
             raise NotesConflictError("lost the race")
         if when == "before_update":

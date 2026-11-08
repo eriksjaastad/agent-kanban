@@ -207,7 +207,7 @@ def test_restore_cli_rejects_paths_without_traceback(db, monkeypatch, tmp_path, 
     import pt
     db.add_project('keep', 'Keep', str(tmp_path), 'active')
     saved = db.add_task('Keep this row', 'keep')
-    monkeypatch.setattr(pt, 'DatabaseManager', lambda: db)
+    monkeypatch.setattr('commands.backup.DatabaseManager', lambda: db)
     result = CliRunner().invoke(pt.cli, ['backup', 'restore', name, '--yes'])
     assert result.exit_code == 2
     assert 'pt backup restore:' in result.output
@@ -221,7 +221,7 @@ def test_backup_cli_reports_verification_failure(db, monkeypatch, tmp_path, comm
     import pt
     db.add_project('keep', 'Keep', str(tmp_path), 'active')
     saved = db.add_task('Keep this row', 'keep')
-    monkeypatch.setattr(pt, 'DatabaseManager', lambda: db)
+    monkeypatch.setattr('commands.backup.DatabaseManager', lambda: db)
     monkeypatch.setattr(db, 'verify_backup', lambda path: False)
     result = CliRunner().invoke(pt.cli, command)
     assert result.exit_code == 2
@@ -240,7 +240,7 @@ def test_offsite_cli_reports_timeout_and_keeps_snapshot(db, monkeypatch, tmp_pat
     monkeypatch.setenv('PT_BACKUP_LOG_PATH', str(tmp_path / 'backup.log'))
     monkeypatch.setenv('PT_BACKUP_RCLONE_DEST', 'synthetic:backups')
     monkeypatch.setenv('RCLONE_CONFIG', str(config))
-    monkeypatch.setattr(pt, 'DatabaseManager', lambda: db)
+    monkeypatch.setattr('commands.backup.DatabaseManager', lambda: db)
     monkeypatch.setattr('shutil.which', lambda name: '/synthetic/rclone')
     def timeout(command, **kwargs):
         raise subprocess.TimeoutExpired(command, 300)
@@ -261,7 +261,7 @@ def test_handoff_json_preserves_database_safety_errors(monkeypatch, error_name):
     from db import schema
     def refuse():
         raise getattr(schema, error_name)('Database safety guard refused this database')
-    monkeypatch.setattr(pt, 'DatabaseManager', refuse)
+    monkeypatch.setattr('commands.handoff.DatabaseManager', refuse)
     result = CliRunner().invoke(pt.cli, ['handoff', 'list', '--json'])
     assert result.exit_code == 3
     payload = json.loads(result.output)
@@ -341,7 +341,7 @@ def test_prune_reports_every_failure_and_leaves_files(db, monkeypatch, failing):
     import os
     import send2trash
     from click.testing import CliRunner
-    from pt import backup_prune as backup_prune_cmd
+    from commands.backup import backup_prune as backup_prune_cmd
 
     def refuse(*_args):
         raise PermissionError(1, "Operation not permitted | see\nnext line")

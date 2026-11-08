@@ -9,8 +9,10 @@ afterEach(() => {
 });
 
 function serve(status: number, body: unknown) {
+  // Every successful payload names the owner, as the server always does.
+  const payload = status < 400 ? { owner: 'Robin', owner_prefix: 'ROBIN:', ...(body as object) } : body;
   const fetchMock = vi.fn(() =>
-    Promise.resolve({ ok: status < 400, status, json: () => Promise.resolve(body) } as Response),
+    Promise.resolve({ ok: status < 400, status, json: () => Promise.resolve(payload) } as Response),
   );
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
@@ -102,5 +104,41 @@ describe('ScheduledJobsPanel', () => {
     expect(await screen.findByText('No scheduled jobs found.')).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.queryByRole('navigation')).toBeNull();
+  });
+  it('shows the share of last runs that finished without Robin, and the ROBIN: cards naming a job', async () => {
+    serve(200, {
+      jobs: [
+        job({ label: 'a.ok', needed_owner: false, owner_cards: [] }),
+        job({ label: 'a.named', needed_owner: true, owner_cards: [8795] }),
+        job({ label: 'a.fail', last_exit: 1, needed_owner: true, owner_cards: [] }),
+        job({ label: 'a.never', last_exit: null }),
+      ],
+      errors: [],
+    });
+    render(<ScheduledJobsPanel />);
+
+    expect(await screen.findByText(/Last run finished without Robin: 1 of 3 jobs/)).toHaveTextContent('(33%)');
+    expect(screen.getByText('ROBIN: #8795')).toBeInTheDocument();
+  });
+  it('shows the last 30 days of recorded runs overall and per job, or says none are recorded yet', async () => {
+    serve(200, {
+      jobs: [job({ label: 'a.ok' }), job({ label: 'a.new' })],
+      errors: [],
+      history: { days: 30, running: 2,
+                 daily: [{ date: '2026-11-01', runs: 0, unattended: 0 }, { date: '2026-11-02', runs: 90, unattended: 84 }],
+                 jobs: { 'a.ok': { runs: 60, unattended: 54 }, 'gone.job': { runs: 30, unattended: 30 } } },
+    });
+    const { unmount } = render(<ScheduledJobsPanel />);
+    expect(await screen.findByText(/Last 30 days: 84 of 90 recorded runs finished without Robin/))
+      .toHaveTextContent('(93%), about 3 a day. 2 still marked running.');
+    expect(screen.getByText('30 d: 54 of 60 without Robin')).toBeInTheDocument();
+    expect(screen.getAllByText(/^30 d: /)).toHaveLength(1);  // a.new has no recorded runs
+    const days = within(screen.getByRole('list', { name: 'Recorded runs by day' })).getAllByRole('listitem');
+    expect(days.map(d => d.textContent)).toEqual(['2026-11-02: 84 of 90 without Robin']);  // empty days left out
+    unmount();
+
+    serve(200, { jobs: [job({ label: 'a.ok' })], errors: [], history: { days: 30, running: 0, daily: [], jobs: {} } });
+    render(<ScheduledJobsPanel />);
+    expect(await screen.findByText(/No recorded runs yet/)).toBeInTheDocument();
   });
 });

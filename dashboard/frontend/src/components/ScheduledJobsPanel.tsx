@@ -28,6 +28,13 @@ export function ScheduledJobsPanel({ projects = [] }: { projects?: string[] }) {
   const without = projects.filter(p => !byProject.has(p)).sort((a, b) => a.localeCompare(b));
   // A source or a job that could not be read may belong to any project, so no project can be called empty.
   const complete = !!request.data && request.data.errors.length === 0 && jobs.every(j => !j.error);
+  // Judged by the server from each job's last run: failed, or named on an open card waiting on the owner (#8847).
+  const judged = jobs.filter(j => j.needed_owner !== undefined);
+  const unattended = judged.filter(j => !j.needed_owner).length;
+  const history = request.data?.history;
+  const owner = request.data?.owner;
+  const recorded = history ? Object.values(history.jobs).reduce((sum, t) => sum + t.runs, 0) : 0;
+  const recordedUnattended = history ? Object.values(history.jobs).reduce((sum, t) => sum + t.unattended, 0) : 0;
 
   return (
     <section className="cal-sched" aria-labelledby="cal-sched-title">
@@ -44,6 +51,32 @@ export function ScheduledJobsPanel({ projects = [] }: { projects?: string[] }) {
         <div key={e} className="cal-error" role="alert">Could not read: {e}</div>
       ))}
       {request.data && jobs.length === 0 && <div className="cal-crons-empty">No scheduled jobs found.</div>}
+      {judged.length > 0 && (
+        <p className="cal-crons-intro">
+          Last run finished without {owner}: {unattended} of {judged.length} jobs
+          ({Math.round((100 * unattended) / judged.length)}%). launchd keeps only each job's last run.
+        </p>
+      )}
+      {history && recorded > 0 && (
+        <p className="cal-crons-intro">
+          Last {history.days} days: {recordedUnattended} of {recorded} recorded runs finished without {owner}
+          ({Math.round((100 * recordedUnattended) / recorded)}%), about {Math.round(recorded / history.days)} a day.
+          {history.running > 0 && ` ${history.running} still marked running.`}
+        </p>
+      )}
+      {history && recorded > 0 && (
+        <details className="cal-crons-intro">
+          <summary>By day</summary>
+          <ul aria-label="Recorded runs by day">
+            {history.daily.filter(d => d.runs > 0).map(d => (
+              <li key={d.date}>{d.date}: {d.unattended} of {d.runs} without {owner}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {history && recorded === 0 && (
+        <p className="cal-crons-intro">No recorded runs yet: jobs record them once switched with make record-runs APPLY=1.</p>
+      )}
       {groups.length > 0 && (
         <nav className="cal-sched-chips" aria-label="Projects with scheduled jobs">
           {groups.map(p => (
@@ -93,7 +126,15 @@ export function ScheduledJobsPanel({ projects = [] }: { projects?: string[] }) {
                       </details>
                     )}
                   </td>
-                  <td className="cal-cron-last">{lastRun(job)}</td>
+                  <td className="cal-cron-last">
+                    {lastRun(job)}
+                    {!!job.owner_cards?.length && <div>{request.data?.owner_prefix} {job.owner_cards.map(id => `#${id}`).join(', ')}</div>}
+                    {history?.jobs[job.label] && (
+                      <div>
+                        {history.days} d: {history.jobs[job.label].unattended} of {history.jobs[job.label].runs} without {owner}
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

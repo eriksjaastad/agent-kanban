@@ -1,11 +1,7 @@
 from fastapi.testclient import TestClient
 
-from dashboard.app import (
-    app,
-    build_navigation,
-    build_spa_shell_html,
-    iter_navigation_leaves,
-)
+from dashboard.app import app
+from dashboard.common import build_navigation, build_spa_shell_html, iter_navigation_leaves
 
 
 client = TestClient(app)

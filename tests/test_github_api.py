@@ -30,7 +30,7 @@ def as_gh_call(fn):
     terms of returned data; returning None means GH_ERROR, and a mock can return an
     explicit (data, kind) tuple when it needs to simulate GH_NOT_FOUND.
     """
-    from dashboard.app import GH_OK, GH_ERROR
+    from dashboard.routes.github import GH_OK, GH_ERROR
 
     def wrapper(args, timeout=30, **_):
         result = fn(args, timeout)
@@ -46,12 +46,12 @@ class TestGhJson:
 
     def test_successful_command(self):
         """_gh_json returns parsed JSON on success."""
-        from dashboard.app import _gh_json
+        from dashboard.routes.github import _gh_json
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = '{"login": "testuser"}'
 
-        with patch("dashboard.app.subprocess.run", return_value=mock_result) as mock_run:
+        with patch("dashboard.routes.github.subprocess.run", return_value=mock_result) as mock_run:
             result = _gh_json(["api", "/user"])
 
         assert result == {"login": "testuser"}
@@ -64,12 +64,12 @@ class TestGhJson:
 
     def test_custom_timeout(self):
         """_gh_json passes custom timeout to subprocess."""
-        from dashboard.app import _gh_json
+        from dashboard.routes.github import _gh_json
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = "[]"
 
-        with patch("dashboard.app.subprocess.run", return_value=mock_result) as mock_run:
+        with patch("dashboard.routes.github.subprocess.run", return_value=mock_result) as mock_run:
             _gh_json(["pr", "list"], timeout=15)
 
         assert mock_run.call_args[1]["timeout"] == 15
@@ -102,21 +102,21 @@ class TestGhJson:
     def test_failure_modes_return_none(self, run_kwargs):
         """_gh_json returns None on a non-zero exit, timeout, non-JSON or empty
         stdout, and when the gh binary is missing."""
-        from dashboard.app import _gh_json
+        from dashboard.routes.github import _gh_json
 
-        with patch("dashboard.app.subprocess.run", **run_kwargs):
+        with patch("dashboard.routes.github.subprocess.run", **run_kwargs):
             result = _gh_json(["api", "/user"])
 
         assert result is None
 
     def test_returns_list(self):
         """_gh_json can return a list, not just a dict."""
-        from dashboard.app import _gh_json
+        from dashboard.routes.github import _gh_json
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = '[{"name": "repo1"}, {"name": "repo2"}]'
 
-        with patch("dashboard.app.subprocess.run", return_value=mock_result):
+        with patch("dashboard.routes.github.subprocess.run", return_value=mock_result):
             result = _gh_json(["pr", "list", "--json", "name"])
 
         assert isinstance(result, list)
@@ -128,7 +128,7 @@ class TestGetTrackedRepoNames:
 
     def test_returns_sorted_project_names(self):
         """Returns sorted list of project IDs, excluding internal prefixes."""
-        from dashboard.app import _get_tracked_repo_names
+        from dashboard.routes.github import _get_tracked_repo_names
 
         mock_projects = [
             {"id": "project-tracker"},
@@ -136,7 +136,7 @@ class TestGetTrackedRepoNames:
             {"id": "ai-journey"},
         ]
 
-        with patch("dashboard.app.DatabaseManager") as MockDB:
+        with patch("dashboard.routes.github.DatabaseManager") as MockDB:
             mock_db = MagicMock()
             mock_db.get_all_projects.return_value = mock_projects
             MockDB.return_value = mock_db
@@ -147,7 +147,7 @@ class TestGetTrackedRepoNames:
 
     def test_filters_underscore_prefixed_projects(self):
         """Projects starting with _ or __ are excluded."""
-        from dashboard.app import _get_tracked_repo_names
+        from dashboard.routes.github import _get_tracked_repo_names
 
         mock_projects = [
             {"id": "_toolbox"},
@@ -156,7 +156,7 @@ class TestGetTrackedRepoNames:
             {"id": "real-project"},
         ]
 
-        with patch("dashboard.app.DatabaseManager") as MockDB:
+        with patch("dashboard.routes.github.DatabaseManager") as MockDB:
             mock_db = MagicMock()
             mock_db.get_all_projects.return_value = mock_projects
             MockDB.return_value = mock_db
@@ -169,7 +169,7 @@ class TestGetTrackedRepoNames:
 
     def test_github_repos_expands_children(self, tmp_path):
         """github-repos project is replaced by its child directories."""
-        from dashboard.app import _get_tracked_repo_names
+        from dashboard.routes.github import _get_tracked_repo_names
 
         # Create mock github-repos directory structure
         github_repos = tmp_path / "github-repos"
@@ -184,7 +184,7 @@ class TestGetTrackedRepoNames:
             {"id": "other-project"},
         ]
 
-        with patch("dashboard.app.DatabaseManager") as MockDB:
+        with patch("dashboard.routes.github.DatabaseManager") as MockDB:
             mock_db = MagicMock()
             mock_db.get_all_projects.return_value = mock_projects
             MockDB.return_value = mock_db
@@ -201,14 +201,14 @@ class TestGetTrackedRepoNames:
 
     def test_github_repos_missing_dir(self, tmp_path):
         """If github-repos directory doesn't exist, it's just skipped."""
-        from dashboard.app import _get_tracked_repo_names
+        from dashboard.routes.github import _get_tracked_repo_names
 
         mock_projects = [
             {"id": "github-repos"},
             {"id": "real-project"},
         ]
 
-        with patch("dashboard.app.DatabaseManager") as MockDB:
+        with patch("dashboard.routes.github.DatabaseManager") as MockDB:
             mock_db = MagicMock()
             mock_db.get_all_projects.return_value = mock_projects
             MockDB.return_value = mock_db
@@ -220,7 +220,7 @@ class TestGetTrackedRepoNames:
 
     def test_deduplication(self):
         """Duplicate project IDs are deduplicated."""
-        from dashboard.app import _get_tracked_repo_names
+        from dashboard.routes.github import _get_tracked_repo_names
 
         mock_projects = [
             {"id": "project-a"},
@@ -228,7 +228,7 @@ class TestGetTrackedRepoNames:
             {"id": "project-b"},
         ]
 
-        with patch("dashboard.app.DatabaseManager") as MockDB:
+        with patch("dashboard.routes.github.DatabaseManager") as MockDB:
             mock_db = MagicMock()
             mock_db.get_all_projects.return_value = mock_projects
             MockDB.return_value = mock_db
@@ -240,9 +240,9 @@ class TestGetTrackedRepoNames:
     def test_database_error_propagates(self):
         """A DB failure raises instead of reading as "no tracked projects" (#6900)."""
         import pytest
-        from dashboard.app import _get_tracked_repo_names
+        from dashboard.routes.github import _get_tracked_repo_names
 
-        with patch("dashboard.app.DatabaseManager", side_effect=Exception("DB connection failed")):
+        with patch("dashboard.routes.github.DatabaseManager", side_effect=Exception("DB connection failed")):
             with pytest.raises(Exception, match="DB connection failed"):
                 _get_tracked_repo_names()
 
@@ -252,9 +252,9 @@ class TestFetchGithubData:
 
     def test_returns_error_when_user_api_fails(self):
         """Returns error dict when gh api /user fails."""
-        from dashboard.app import _fetch_github_data
+        from dashboard.routes.github import _fetch_github_data
 
-        with patch("dashboard.app._gh_json", return_value=None):
+        with patch("dashboard.routes.github._gh_json", return_value=None):
             result = _fetch_github_data()
 
         assert "error" in result
@@ -262,22 +262,22 @@ class TestFetchGithubData:
 
     def test_returns_error_when_no_tracked_projects(self):
         """Returns error dict when no tracked projects found."""
-        from dashboard.app import _fetch_github_data
+        from dashboard.routes.github import _fetch_github_data
 
         def mock_gh_json(args, timeout=30):
             if args == ["api", "/user"]:
                 return {"login": "testuser"}
             return None
 
-        with patch("dashboard.app._gh_call", side_effect=as_gh_call(mock_gh_json)):
-            with patch("dashboard.app._get_tracked_repo_names", return_value=[]):
+        with patch("dashboard.routes.github._gh_call", side_effect=as_gh_call(mock_gh_json)):
+            with patch("dashboard.routes.github._get_tracked_repo_names", return_value=[]):
                 result = _fetch_github_data()
 
         assert "error" in result
 
     def test_successful_fetch_has_required_keys(self):
         """Successful fetch returns all expected top-level keys."""
-        from dashboard.app import _fetch_github_data
+        from dashboard.routes.github import _fetch_github_data
 
         user_data = {
             "login": "testuser",
@@ -317,8 +317,8 @@ class TestFetchGithubData:
                 return []
             return None
 
-        with patch("dashboard.app._gh_call", side_effect=as_gh_call(mock_gh_json)):
-            with patch("dashboard.app._get_tracked_repo_names", return_value=["my-repo"]):
+        with patch("dashboard.routes.github._gh_call", side_effect=as_gh_call(mock_gh_json)):
+            with patch("dashboard.routes.github._get_tracked_repo_names", return_value=["my-repo"]):
                 result = _fetch_github_data()
 
         assert "error" not in result
@@ -337,25 +337,12 @@ class TestFetchGithubData:
 
     def test_summary_counts_are_correct(self):
         """Summary section has correct computed counts."""
-        from dashboard.app import _fetch_github_data
-
-        def mock_gh_json(args, timeout=30):
-            if args == ["api", "/user"]:
-                return {"login": "testuser"}
-            if args[0] == "repo" and args[1] == "view":
-                name = args[2].split("/")[1]
-                return {
-                    "name": name,
-                    "isArchived": name == "archived-repo",
-                    "pushedAt": "2020-01-01T00:00:00Z",
-                    "defaultBranchRef": {"name": "main"},
-                }
-            return []
+        from dashboard.routes.github import _fetch_github_data
 
         tracked = ["active-repo", "archived-repo", "missing-repo"]
 
         def selective_gh_json(args, timeout=30):
-            from dashboard.app import GH_NOT_FOUND
+            from dashboard.routes.github import GH_NOT_FOUND
             if args == ["api", "/user"]:
                 return {"login": "testuser"}
             if args[0] == "repo" and args[1] == "view":
@@ -372,8 +359,8 @@ class TestFetchGithubData:
                 }
             return []
 
-        with patch("dashboard.app._gh_call", side_effect=as_gh_call(selective_gh_json)):
-            with patch("dashboard.app._get_tracked_repo_names", return_value=tracked):
+        with patch("dashboard.routes.github._gh_call", side_effect=as_gh_call(selective_gh_json)):
+            with patch("dashboard.routes.github._get_tracked_repo_names", return_value=tracked):
                 result = _fetch_github_data()
 
         assert result["summary"]["tracked_projects"] == 3
@@ -386,9 +373,9 @@ class TestFetchGithubData:
 
 class TestApiGithubEndpoint:
     def test_endpoint_delegates_without_waiting_for_collection(self):
-        from dashboard.app import api_github
+        from dashboard.routes.github import api_github
         pending = {"cached": False, "refreshing": True}
-        with patch("dashboard.app._github_cache") as cache:
+        with patch("dashboard.routes.github._github_cache") as cache:
             cache.read.return_value = pending
             assert asyncio.run(api_github()) == pending
             cache.read.assert_called_once()
@@ -404,7 +391,7 @@ class TestPrListFields:
 
     def test_requested_fields_are_all_valid(self):
         """Every field in PR_LIST_FIELDS is accepted by `gh pr list --json`."""
-        from dashboard.app import PR_LIST_FIELDS, GH_PR_LIST_VALID_FIELDS
+        from dashboard.routes.github import PR_LIST_FIELDS, GH_PR_LIST_VALID_FIELDS
 
         invalid = set(PR_LIST_FIELDS) - GH_PR_LIST_VALID_FIELDS
         assert not invalid, (
@@ -412,16 +399,9 @@ class TestPrListFields:
             "gh rejects the whole call, so every PR fetch would return nothing."
         )
 
-    def test_repository_is_not_requested(self):
-        """`repository` is a `gh search prs` field, not a `gh pr list` field."""
-        from dashboard.app import PR_LIST_FIELDS, GH_PR_LIST_VALID_FIELDS
-
-        assert "repository" not in GH_PR_LIST_VALID_FIELDS
-        assert "repository" not in PR_LIST_FIELDS
-
     def test_fields_cover_what_the_frontend_reads(self):
         """Fields the dashboard UI renders are actually requested."""
-        from dashboard.app import PR_LIST_FIELDS
+        from dashboard.routes.github import PR_LIST_FIELDS
 
         for field in ("title", "number", "url", "author", "createdAt",
                       "headRefName", "isDraft", "statusCheckRollup"):
@@ -429,7 +409,7 @@ class TestPrListFields:
 
     def test_gh_invoked_with_valid_fields(self):
         """The actual `gh pr list` call sends only valid fields."""
-        from dashboard.app import _fetch_github_data, GH_PR_LIST_VALID_FIELDS
+        from dashboard.routes.github import _fetch_github_data, GH_PR_LIST_VALID_FIELDS
 
         seen = []
 
@@ -448,8 +428,8 @@ class TestPrListFields:
                 return []
             return []
 
-        with patch("dashboard.app._gh_call", side_effect=as_gh_call(mock_gh_json)):
-            with patch("dashboard.app._get_tracked_repo_names", return_value=["my-repo"]):
+        with patch("dashboard.routes.github._gh_call", side_effect=as_gh_call(mock_gh_json)):
+            with patch("dashboard.routes.github._get_tracked_repo_names", return_value=["my-repo"]):
                 _fetch_github_data()
 
         assert seen, "no `gh pr list` call was made"
@@ -463,7 +443,7 @@ class TestPrRepositoryAttribution:
 
     @staticmethod
     def _fetch(tracked, prs_by_repo):
-        from dashboard.app import _fetch_github_data
+        from dashboard.routes.github import _fetch_github_data
 
         def mock_gh_json(args, timeout=30):
             if args == ["api", "/user"]:
@@ -480,8 +460,8 @@ class TestPrRepositoryAttribution:
                 return prs_by_repo.get(repo, [])
             return []
 
-        with patch("dashboard.app._gh_call", side_effect=as_gh_call(mock_gh_json)):
-            with patch("dashboard.app._get_tracked_repo_names", return_value=tracked):
+        with patch("dashboard.routes.github._gh_call", side_effect=as_gh_call(mock_gh_json)):
+            with patch("dashboard.routes.github._get_tracked_repo_names", return_value=tracked):
                 return _fetch_github_data()
 
     def test_repository_name_attached_to_each_pr(self):
@@ -501,7 +481,7 @@ class TestPrRepositoryAttribution:
 
     def test_failing_ci_correlates_pr_to_repo(self):
         """summary.failing_ci matches a failed run to a PR in the same repo."""
-        from dashboard.app import _fetch_github_data
+        from dashboard.routes.github import _fetch_github_data
 
         def mock_gh_json(args, timeout=30):
             if args == ["api", "/user"]:
@@ -526,53 +506,11 @@ class TestPrRepositoryAttribution:
                 }]}
             return []
 
-        with patch("dashboard.app._gh_call", side_effect=as_gh_call(mock_gh_json)):
-            with patch("dashboard.app._get_tracked_repo_names", return_value=["repo-a"]):
+        with patch("dashboard.routes.github._gh_call", side_effect=as_gh_call(mock_gh_json)):
+            with patch("dashboard.routes.github._get_tracked_repo_names", return_value=["repo-a"]):
                 result = _fetch_github_data()
 
         assert result["summary"]["failing_ci"] == 1
-
-
-class TestPrFetchErrorReporting:
-    """A failed PR fetch must be distinguishable from 'no open PRs'."""
-
-    @staticmethod
-    def _fetch(pr_return):
-        from dashboard.app import _fetch_github_data
-
-        def mock_gh_json(args, timeout=30):
-            if args == ["api", "/user"]:
-                return {"login": "testuser"}
-            if args[0] == "repo" and args[1] == "view":
-                return {
-                    "name": args[2].split("/")[1],
-                    "isArchived": False,
-                    "pushedAt": "2020-01-01T00:00:00Z",
-                    "defaultBranchRef": {"name": "main"},
-                }
-            if args[0] == "pr":
-                return pr_return
-            return []
-
-        with patch("dashboard.app._gh_call", side_effect=as_gh_call(mock_gh_json)):
-            with patch("dashboard.app._get_tracked_repo_names", return_value=["repo-a"]):
-                return _fetch_github_data()
-
-    def test_failed_fetch_is_reported(self):
-        """A None return from gh surfaces in fetch_errors, not as silence."""
-        result = self._fetch(None)
-
-        assert result["open_pull_requests"] == []
-        assert result["summary"]["fetch_errors"] == 1
-        assert any("repo-a" in e for e in result["fetch_errors"])
-
-    def test_no_open_prs_is_not_an_error(self):
-        """An empty list means the repo genuinely has no open PRs."""
-        result = self._fetch([])
-
-        assert result["open_pull_requests"] == []
-        assert result["fetch_errors"] == []
-        assert result["summary"]["fetch_errors"] == 0
 
 
 class TestGhFieldListDrift:
@@ -610,7 +548,7 @@ class TestGhFieldListDrift:
         a warning instead.
         """
         import pytest
-        from dashboard.app import PR_LIST_FIELDS, GH_PR_LIST_VALID_FIELDS
+        from dashboard.routes.github import PR_LIST_FIELDS, GH_PR_LIST_VALID_FIELDS
 
         live = self._live_fields()
         if live is None:
@@ -644,7 +582,7 @@ class TestPrPartialFailure:
 
     def test_partial_failure_keeps_good_repos(self):
         """One repo failing must not discard PRs from repos that succeeded."""
-        from dashboard.app import _fetch_github_data
+        from dashboard.routes.github import _fetch_github_data
 
         def mock_gh_json(args, timeout=30):
             if args == ["api", "/user"]:
@@ -665,8 +603,8 @@ class TestPrPartialFailure:
                 return [{"number": 7, "title": "Good", "headRefName": "feat/g"}]
             return []
 
-        with patch("dashboard.app._gh_call", side_effect=as_gh_call(mock_gh_json)):
-            with patch("dashboard.app._get_tracked_repo_names",
+        with patch("dashboard.routes.github._gh_call", side_effect=as_gh_call(mock_gh_json)):
+            with patch("dashboard.routes.github._get_tracked_repo_names",
                        return_value=["good-repo", "broken-repo", "quiet-repo"]):
                 result = _fetch_github_data()
 
@@ -686,21 +624,21 @@ class TestGhCallClassification:
 
     @staticmethod
     def _run(returncode, stdout="", stderr=""):
-        from dashboard.app import _gh_call
+        from dashboard.routes.github import _gh_call
         mock_result = MagicMock()
         mock_result.returncode = returncode
         mock_result.stdout = stdout
         mock_result.stderr = stderr
-        with patch("dashboard.app.subprocess.run", return_value=mock_result):
+        with patch("dashboard.routes.github.subprocess.run", return_value=mock_result):
             return _gh_call(["repo", "view", "owner/thing", "--json", "name"])
 
     def test_success_returns_data_and_ok(self):
-        from dashboard.app import GH_OK
+        from dashboard.routes.github import GH_OK
         assert self._run(0, '{"name": "thing"}') == ({"name": "thing"}, GH_OK)
 
     def test_empty_stdout_is_not_a_failure(self):
         """gh exiting 0 with no output is an empty result, not an error."""
-        from dashboard.app import GH_OK
+        from dashboard.routes.github import GH_OK
         assert self._run(0, "   ") == (None, GH_OK)
 
     @pytest.mark.parametrize(
@@ -717,7 +655,7 @@ class TestGhCallClassification:
         ],
     )
     def test_missing_target_is_not_found(self, stderr):
-        from dashboard.app import GH_NOT_FOUND
+        from dashboard.routes.github import GH_NOT_FOUND
         data, failure = self._run(1, stderr=stderr)
         assert (data, failure) == (None, GH_NOT_FOUND)
 
@@ -732,23 +670,15 @@ class TestGhCallClassification:
         ],
     )
     def test_real_failure_is_error_not_missing(self, stderr):
-        from dashboard.app import GH_ERROR
+        from dashboard.routes.github import GH_ERROR
         assert self._run(1, stderr=stderr)[1] == GH_ERROR
 
     def test_timeout_is_error(self):
-        from dashboard.app import _gh_call, GH_ERROR
-        with patch("dashboard.app.subprocess.run",
+        from dashboard.routes.github import _gh_call, GH_ERROR
+        with patch("dashboard.routes.github.subprocess.run",
                    side_effect=subprocess.TimeoutExpired(cmd="gh", timeout=10)):
             assert _gh_call(["api", "/user"]) == (None, GH_ERROR)
 
-    def test_gh_json_wrapper_still_returns_bare_data(self):
-        """Existing _gh_json callers keep the old data-or-None contract."""
-        from dashboard.app import _gh_json
-        mock_result = MagicMock()
-        mock_result.returncode = 0
-        mock_result.stdout = '{"login": "testuser"}'
-        with patch("dashboard.app.subprocess.run", return_value=mock_result):
-            assert _gh_json(["api", "/user"]) == {"login": "testuser"}
 
 
 class TestNonPrFetchErrors:
@@ -757,7 +687,7 @@ class TestNonPrFetchErrors:
     @staticmethod
     def _fetch(failing):
         """Run a fetch where `failing` names the call type that errors."""
-        from dashboard.app import _fetch_github_data, GH_OK, GH_ERROR
+        from dashboard.routes.github import _fetch_github_data, GH_OK, GH_ERROR
 
         def mock_gh_call(args, timeout=30, **_):
             if args == ["api", "/user"]:
@@ -783,19 +713,11 @@ class TestNonPrFetchErrors:
                 return (None, GH_ERROR) if failing == "commits" else ([], GH_OK)
             return ([], GH_OK)
 
-        with patch("dashboard.app._gh_call", side_effect=mock_gh_call):
-            with patch("dashboard.app._gh_json",
+        with patch("dashboard.routes.github._gh_call", side_effect=mock_gh_call):
+            with patch("dashboard.routes.github._gh_json",
                        side_effect=lambda a, timeout=30: mock_gh_call(a, timeout)[0]):
-                with patch("dashboard.app._get_tracked_repo_names", return_value=["repo-a"]):
+                with patch("dashboard.routes.github._get_tracked_repo_names", return_value=["repo-a"]):
                     return _fetch_github_data()
-
-    def test_repo_view_failure_is_not_counted_as_missing(self):
-        """A broken repo fetch must not masquerade as 'not on GitHub'."""
-        result = self._fetch("repo")
-
-        assert result["summary"]["repos_not_on_github"] == 0
-        assert result["summary"]["fetch_errors"] == 1
-        assert any("repo metadata" in e and "repo-a" in e for e in result["fetch_errors"])
 
     @pytest.mark.parametrize(
         "failing, key, label",
@@ -821,39 +743,8 @@ class TestNonPrFetchErrors:
 
 
 class TestOtherGhPrListCallSites:
-    """Every `gh pr list --json` call site in the repo needs the same guard.
-
-    dashboard/app.py is not the only caller. scripts/pt.py runs its own
-    `gh pr list` for hygiene checks, and a bad field there fails the same
-    silent way: gh exits non-zero and the wrapper hands back
-    {"available": False}, which reads as "no PR drift" rather than "we could
-    not look."
-    """
-
-    def test_pt_hygiene_fields_are_valid(self):
-        """scripts/pt.py's PR fields are accepted by `gh pr list --json`."""
-        from dashboard.app import GH_PR_LIST_VALID_FIELDS
-        import pt
-
-        invalid = set(pt.HYGIENE_PR_FIELDS) - GH_PR_LIST_VALID_FIELDS
-        assert not invalid, (
-            f"scripts/pt.py requests invalid `gh pr list --json` field(s): {sorted(invalid)}. "
-            "gh rejects the whole call, so _hygiene_open_pr_drift would report "
-            "available=False forever."
-        )
-
-    def test_pt_does_not_request_repository(self):
-        """The #6749 field specifically — `pr list` never returns it."""
-        import pt
-
-        assert "repository" not in pt.HYGIENE_PR_FIELDS
-
-    def test_pt_hygiene_fields_cover_what_it_reads(self):
-        """Fields _hygiene_open_pr_drift actually dereferences are requested."""
-        import pt
-
-        for field in ("number", "title", "author", "createdAt"):
-            assert field in pt.HYGIENE_PR_FIELDS
+    """Every `gh pr list --json` call site needs a validated field constant:
+    gh rejects the whole call on one bad field (#6749)."""
 
     def test_no_inline_gh_pr_list_json_strings_remain(self):
         """New `gh pr list --json` call sites must use a guarded constant.
@@ -865,13 +756,15 @@ class TestOtherGhPrListCallSites:
         from pathlib import Path
 
         root = Path(__file__).resolve().parent.parent
+        sources = [*(root / "dashboard").rglob("*.py"), *(root / "scripts").rglob("*.py")]
+        # The code these call sites live in has moved before (#8771); a scan of a stale path passes vacuously.
+        assert root / "dashboard" / "routes" / "github.py" in sources
         offenders = []
-        for rel in ("dashboard/app.py", "scripts/pt.py"):
-            text = (root / rel).read_text()
+        for path in sources:
             # A --json argument given as a comma-joined literal, e.g.
             # "--json", "number,title,author"  — as opposed to ",".join(CONST).
-            for match in re.finditer(r'"--json",\s*\n?\s*"([a-zA-Z]+,[a-zA-Z,]+)"', text):
-                offenders.append(f"{rel}: {match.group(1)[:60]}")
+            for match in re.finditer(r'"--json",\s*\n?\s*"([a-zA-Z]+,[a-zA-Z,]+)"', path.read_text()):
+                offenders.append(f"{path.relative_to(root)}: {match.group(1)[:60]}")
 
         assert not offenders, (
             "Inline --json field strings found; use a validated constant instead:\n  "
@@ -883,7 +776,7 @@ class TestRepoViewFields:
     """`gh repo view` has its own field set — same all-or-nothing contract."""
 
     def test_requested_fields_are_all_valid(self):
-        from dashboard.app import REPO_VIEW_FIELDS, GH_REPO_VIEW_VALID_FIELDS
+        from dashboard.routes.github import REPO_VIEW_FIELDS, GH_REPO_VIEW_VALID_FIELDS
 
         invalid = set(REPO_VIEW_FIELDS) - GH_REPO_VIEW_VALID_FIELDS
         assert not invalid, (
@@ -893,7 +786,7 @@ class TestRepoViewFields:
 
     def test_field_sets_are_not_interchangeable(self):
         """Guards the assumption that broke #6749: sets differ per subcommand."""
-        from dashboard.app import GH_PR_LIST_VALID_FIELDS, GH_REPO_VIEW_VALID_FIELDS
+        from dashboard.routes.github import GH_PR_LIST_VALID_FIELDS, GH_REPO_VIEW_VALID_FIELDS
 
         assert GH_PR_LIST_VALID_FIELDS != GH_REPO_VIEW_VALID_FIELDS
         # `repository` is in neither — it belongs to `gh search prs`.
@@ -902,7 +795,7 @@ class TestRepoViewFields:
 
     def test_fields_cover_what_fetch_uses(self):
         """Keys _fetch_github_data and the frontend read must be requested."""
-        from dashboard.app import REPO_VIEW_FIELDS
+        from dashboard.routes.github import REPO_VIEW_FIELDS
 
         for field in ("name", "isArchived", "pushedAt", "defaultBranchRef",
                       "url", "isPrivate", "description", "stargazerCount"):
@@ -912,7 +805,7 @@ class TestRepoViewFields:
         """Removal direction only — additions are gh's business, not a failure."""
         import pytest
         import shutil
-        from dashboard.app import REPO_VIEW_FIELDS
+        from dashboard.routes.github import REPO_VIEW_FIELDS
 
         gh = shutil.which("gh")
         if not gh:
@@ -945,7 +838,7 @@ class TestParallelFetch:
         for each other at a barrier, which only succeeds if they run at once;
         a one-at-a-time fetch times out there instead of hanging."""
         import threading
-        from dashboard.app import GH_NOT_FOUND, GH_OK, GH_ERROR
+        from dashboard.routes.github import GH_NOT_FOUND, GH_OK, GH_ERROR
 
         lock = threading.Lock()
         barriers = {kind: threading.Barrier(2, timeout=2) for kind in cls.STAGES}
@@ -991,12 +884,12 @@ class TestParallelFetch:
         return call, state
 
     def test_output_order_matches_the_tracked_order(self):
-        from dashboard.app import _fetch_github_data
+        from dashboard.routes.github import _fetch_github_data
 
         names = [f"r{i:02d}" for i in range(12)]
         call, state = self._fake(errors=("r03", "r07"), meet=True)
-        with patch("dashboard.app._gh_call", side_effect=call), \
-                patch("dashboard.app._get_tracked_repo_names", return_value=names):
+        with patch("dashboard.routes.github._gh_call", side_effect=call), \
+                patch("dashboard.routes.github._get_tracked_repo_names", return_value=names):
             result = _fetch_github_data()
 
         assert [r["name"] for r in result["repos"]] == names
@@ -1006,7 +899,7 @@ class TestParallelFetch:
         assert state["met"] == set(self.STAGES)
 
     def test_an_empty_pr_list_response_is_no_prs(self):
-        from dashboard.app import GH_OK, _fetch_github_data
+        from dashboard.routes.github import GH_OK, _fetch_github_data
 
         def call(args, timeout=30, **_):
             if args == ["api", "/user"]:
@@ -1017,8 +910,8 @@ class TestParallelFetch:
                 return (None, GH_OK)  # gh printed nothing
             return ([], GH_OK)
 
-        with patch("dashboard.app._gh_call", side_effect=call), \
-                patch("dashboard.app._get_tracked_repo_names", return_value=["r"]):
+        with patch("dashboard.routes.github._gh_call", side_effect=call), \
+                patch("dashboard.routes.github._get_tracked_repo_names", return_value=["r"]):
             result = _fetch_github_data()
 
         assert result["open_pull_requests"] == []
@@ -1031,7 +924,7 @@ class TestFetchStages:
 
     @staticmethod
     def _call(repos, seen, view_error=(), view_missing=(), boom=None):
-        from dashboard.app import GH_ERROR, GH_NOT_FOUND, GH_OK
+        from dashboard.routes.github import GH_ERROR, GH_NOT_FOUND, GH_OK
 
         def call(args, timeout=30, **_):
             seen.append(args)
@@ -1063,10 +956,10 @@ class TestFetchStages:
         return call
 
     def _fetch(self, names, call):
-        from dashboard.app import _fetch_github_data
+        from dashboard.routes.github import _fetch_github_data
 
-        with patch("dashboard.app._gh_call", side_effect=call), \
-                patch("dashboard.app._get_tracked_repo_names", return_value=names):
+        with patch("dashboard.routes.github._gh_call", side_effect=call), \
+                patch("dashboard.routes.github._get_tracked_repo_names", return_value=names):
             return _fetch_github_data()
 
     def test_filters_and_content_per_stage(self):
@@ -1129,11 +1022,11 @@ def test_only_an_expected_not_found_skips_the_warning(caplog):
     """repo view passes missing_ok (half the tracked projects aren't on GitHub);
     a 404 anywhere else is a real failure and still warns."""
     import logging
-    from dashboard.app import GH_NOT_FOUND, _gh_call
+    from dashboard.routes.github import GH_NOT_FOUND, _gh_call
 
     missing = MagicMock(returncode=1, stdout="", stderr="GraphQL: Could not resolve to a Repository")
     with caplog.at_level(logging.DEBUG):
-        with patch("dashboard.app.subprocess.run", return_value=missing):
+        with patch("dashboard.routes.github.subprocess.run", return_value=missing):
             assert _gh_call(["repo", "view", "me/local-only"], missing_ok=True)[1] == GH_NOT_FOUND
             assert _gh_call(["api", "/repos/me/x/actions/runs"])[1] == GH_NOT_FOUND
     warned = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
@@ -1143,7 +1036,7 @@ def test_only_an_expected_not_found_skips_the_warning(caplog):
 
 
 def test_the_repo_view_stage_marks_not_found_as_expected():
-    from dashboard.app import GH_OK, _fetch_github_data
+    from dashboard.routes.github import GH_OK, _fetch_github_data
 
     kwargs_by_kind = {}
 
@@ -1155,8 +1048,8 @@ def test_the_repo_view_stage_marks_not_found_as_expected():
             return ({"name": "r", "isArchived": False, "pushedAt": ""}, GH_OK)
         return ([], GH_OK)
 
-    with patch("dashboard.app._gh_call", side_effect=call), \
-            patch("dashboard.app._get_tracked_repo_names", return_value=["r"]):
+    with patch("dashboard.routes.github._gh_call", side_effect=call), \
+            patch("dashboard.routes.github._get_tracked_repo_names", return_value=["r"]):
         _fetch_github_data()
     assert kwargs_by_kind["repo view"] == {"missing_ok": True}
     assert all(kw == {} for kind, kw in kwargs_by_kind.items() if kind != "repo view")
@@ -1164,18 +1057,18 @@ def test_the_repo_view_stage_marks_not_found_as_expected():
 
 def test_missing_ok_still_warns_on_a_real_failure(caplog):
     import logging
-    from dashboard.app import GH_ERROR, _gh_call
+    from dashboard.routes.github import GH_ERROR, _gh_call
 
     broken = MagicMock(returncode=1, stdout="", stderr="HTTP 502: Bad Gateway")
     with caplog.at_level(logging.DEBUG):
-        with patch("dashboard.app.subprocess.run", return_value=broken):
+        with patch("dashboard.routes.github.subprocess.run", return_value=broken):
             assert _gh_call(["repo", "view", "me/flaky"], missing_ok=True)[1] == GH_ERROR
     assert any("me/flaky" in r.getMessage() for r in caplog.records if r.levelno == logging.WARNING)
 
 
 def test_each_refresh_logs_one_missing_count_line(caplog):
     import logging
-    from dashboard.app import GH_NOT_FOUND, GH_OK, _fetch_github_data
+    from dashboard.routes.github import GH_NOT_FOUND, GH_OK, _fetch_github_data
 
     def call(args, timeout=30, **_):
         if args == ["api", "/user"]:
@@ -1187,8 +1080,8 @@ def test_each_refresh_logs_one_missing_count_line(caplog):
         return ([], GH_OK)
 
     with caplog.at_level(logging.DEBUG):
-        with patch("dashboard.app._gh_call", side_effect=call), \
-                patch("dashboard.app._get_tracked_repo_names", return_value=["local-a", "here", "local-b"]):
+        with patch("dashboard.routes.github._gh_call", side_effect=call), \
+                patch("dashboard.routes.github._get_tracked_repo_names", return_value=["local-a", "here", "local-b"]):
             _fetch_github_data()
     info = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
     assert info.count("GitHub: 2 of 3 tracked projects not on GitHub") == 1

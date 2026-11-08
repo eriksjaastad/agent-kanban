@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   fetchCalendarEvents,
   fetchCalendarCrons,
+  fetchCalendarToday,
   createCalendarEvent,
   markCalendarEventDone,
   fetchProjects,
@@ -86,18 +87,20 @@ export function CalendarPage() {
   // reload (after Mark Done or Add Event) is in flight.
   const calendar = useRequest(
     async (signal) => {
-      const [events, crons, projects] = await Promise.all([
+      const [events, crons, projects, todays] = await Promise.all([
         fetchCalendarEvents({ days: 120, include_all: true }, signal),
         fetchCalendarCrons(undefined, signal),
         fetchProjects(signal),
+        fetchCalendarToday(signal),
       ]);
-      return { events, crons, projects: projects.slice().sort((a, b) => a.name.localeCompare(b.name)) };
+      return { events, crons, todays, projects: projects.slice().sort((a, b) => a.name.localeCompare(b.name)) };
     },
     [],
   );
   const events: CalendarEvent[] = calendar.data?.events ?? [];
   const crons: CalendarCronJob[] = calendar.data?.crons ?? [];
   const projects = calendar.data?.projects ?? [];
+  const todays = calendar.data?.todays;
   const { loading } = calendar;
   const error = loading ? null : calendar.error?.message ?? null;
   const load = calendar.reload;
@@ -106,7 +109,8 @@ export function CalendarPage() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [filterProject, setFilterProject] = useState('');
   const [filterType, setFilterType] = useState('');
-  const [activeTab, setActiveTab] = useState<'calendar' | 'crons'>('calendar');
+  // Today is the default: what's next matters more than the month (#8793).
+  const [activeTab, setActiveTab] = useState<'today' | 'calendar' | 'crons'>('today');
 
   // Add-event form state
   const [formTitle, setFormTitle] = useState('');
@@ -122,13 +126,31 @@ export function CalendarPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [markDoneError, setMarkDoneError] = useState<string | null>(null);
 
-  // Filtered events for the current month view
-  const visibleEvents = events.filter(ev => {
-    if (ev.status !== 'active') return false;
-    if (filterProject && ev.project_id !== filterProject) return false;
-    if (filterType && ev.event_type !== filterType) return false;
-    return true;
-  });
+  // One filter for every view: the header's project and type selects.
+  const matchesFilters = (ev: CalendarEvent) =>
+    ev.status === 'active'
+    && (!filterProject || ev.project_id === filterProject)
+    && (!filterType || ev.event_type === filterType);
+  const visibleEvents = events.filter(matchesFilters);
+  const todaysEvents = todays?.events.filter(matchesFilters) ?? [];
+
+  // Today is the server's date, so ask the server (each minute and on focus)
+  // and reload once its date moves on, e.g. a page left open overnight. No
+  // check runs while a load is in flight, and the first new date retires the
+  // rest, so a slow reload is never restarted.
+  useEffect(() => {
+    if (!todays || loading) return;
+    let live = true;
+    const check = () => {
+      fetchCalendarToday().then(
+        (t) => { if (live && t.date !== todays.date) { live = false; load(); } },
+        (err) => console.error('calendar date check failed', err),
+      );
+    };
+    const timer = window.setInterval(check, 60_000);
+    window.addEventListener('focus', check);
+    return () => { live = false; window.clearInterval(timer); window.removeEventListener('focus', check); };
+  }, [todays, loading, load]);
 
   // Map events by date for the grid
   const eventsByDate = new Map<string, CalendarEvent[]>();
@@ -245,7 +267,6 @@ export function CalendarPage() {
   return (
     <PageShell
       title="Calendar"
-      subtitle="AI-first scheduling — events, deadlines, milestones, and cron jobs in one place."
       actions={headerActions}
       headerWidth="default"
       contentWidth="full"
@@ -259,6 +280,17 @@ export function CalendarPage() {
             {/* Tabs */}
             <div className="cal-tabs" role="tablist">
               <button
+                id="cal-tab-today"
+                role="tab"
+                aria-selected={activeTab === 'today'}
+                aria-controls="cal-panel-today"
+                className={`cal-tab${activeTab === 'today' ? ' active' : ''}`}
+                onClick={() => setActiveTab('today')}
+                type="button"
+              >
+                📋 Today
+              </button>
+              <button
                 id="cal-tab-calendar"
                 role="tab"
                 aria-selected={activeTab === 'calendar'}
@@ -267,7 +299,7 @@ export function CalendarPage() {
                 onClick={() => setActiveTab('calendar')}
                 type="button"
               >
-                📅 Calendar
+                📅 Month
               </button>
               <button
                 id="cal-tab-crons"
@@ -282,6 +314,37 @@ export function CalendarPage() {
                 {crons.length > 0 && <span className="cal-badge">{crons.length}</span>}
               </button>
             </div>
+
+            {activeTab === 'today' && todays && (
+              <div id="cal-panel-today" role="tabpanel" aria-labelledby="cal-tab-today" className="cal-today">
+                <h2 className="cal-today-date">{formatDate(todays.date)}</h2>
+                {todays.unreadable.length > 0 && (
+                  <p className="cal-error">
+                    ⚠️ {todays.unreadable.length} event(s) have an unreadable stored date or time:{' '}
+                    {todays.unreadable.map(ev => ev.title).join(', ')}
+                  </p>
+                )}
+                {todaysEvents.length === 0 ? (
+                  <p className="cal-today-empty">Nothing scheduled today.</p>
+                ) : (
+                  <ul className="cal-today-list">
+                    {todaysEvents.map(ev => (
+                      <li key={ev.id}>
+                        <button type="button" className="cal-today-item" onClick={e => handleEventClick(ev, e)}>
+                          <span className="cal-today-time">
+                            {ev.event_time ? `${ev.event_time}${ev.end_time ? `–${ev.end_time}` : ''}` : 'All day'}
+                          </span>
+                          <span className="cal-today-title">{EVENT_TYPE_EMOJI[ev.event_type] ?? ''} {ev.title}</span>
+                          <span className="cal-today-meta">
+                            {[ev.event_type, ev.project_id, ev.recurrence].filter(Boolean).join(' · ')}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
             {activeTab === 'calendar' && (
               <div

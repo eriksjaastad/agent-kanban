@@ -16,7 +16,7 @@ import logging
 import re
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional
 
@@ -54,8 +54,10 @@ VALID_EVENT_TYPES = {"reminder", "deadline", "milestone", "meeting", "recurring"
 VALID_RECURRENCE = {None, "daily", "weekly", "monthly"}
 
 
-_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
-_TIME_RE = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
+# ASCII only: str.isdigit-style \d also matches digits such as "٠" or "６",
+# which then sort and parse unlike the times they look like.
+_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}", re.ASCII)
+_TIME_RE = re.compile(r"([01]\d|2[0-3]):[0-5]\d", re.ASCII)
 
 
 def validate_event_date(value: str) -> str:
@@ -80,6 +82,43 @@ def validate_event_time(value: str) -> str:
     if not isinstance(value, str) or not _TIME_RE.fullmatch(value):
         raise ValueError(f"event_time must be a 24-hour time written HH:MM, got {value!r}")
     return value
+
+
+def validate_block(event_time: Optional[str], end_time: Optional[str]) -> None:
+    """An end time needs a start time and comes after it on the same day (blocks don't cross midnight)."""
+    if end_time is None:
+        return
+    validate_event_time(end_time)
+    if event_time is None:
+        raise ValueError("end_time needs an event_time to start from")
+    validate_event_time(event_time)  # a stored time from before ASCII-only validation, too
+    if end_time <= event_time:
+        raise ValueError(f"end_time {end_time} must be after event_time {event_time}")
+
+
+def _next_occurrence(event: Dict[str, Any], day: date) -> Optional[date]:
+    """The first day on or after ``day`` that ``event`` happens: once on its date,
+    or from it on daily, on its weekday, or on its day of the month (skipping
+    months too short to have it)."""
+    start = date.fromisoformat(event["event_date"])
+    recurrence = event.get("recurrence")
+    if recurrence is None:
+        return start if start >= day else None
+    day = max(day, start)
+    if recurrence == "daily":
+        return day
+    if recurrence == "weekly":
+        return day + timedelta(days=(start.weekday() - day.weekday()) % 7)
+    year, month = day.year, day.month
+    for _ in range(12):  # every day of the month 1-31 occurs within a year
+        try:
+            candidate = date(year, month, start.day)
+        except ValueError:
+            candidate = None
+        if candidate and candidate >= day:
+            return candidate
+        year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+    return None
 
 
 def validate_event_type(event_type: str) -> tuple[bool, str]:
@@ -131,6 +170,7 @@ class CalendarManager:
         *,
         description: Optional[str] = None,
         event_time: Optional[str] = None,
+        end_time: Optional[str] = None,
         event_type: str = "reminder",
         recurrence: Optional[str] = None,
         project_id: Optional[str] = None,
@@ -149,6 +189,8 @@ class CalendarManager:
             event_time = None
         if event_time is not None:
             validate_event_time(event_time)
+        end_time = end_time or None
+        validate_block(event_time, end_time)
         ok, err = validate_event_type(event_type)
         if not ok:
             raise ValueError(err)
@@ -161,14 +203,14 @@ class CalendarManager:
             conn.execute(
                 """
                 INSERT INTO calendar_events
-                    (id, title, description, event_date, event_time, event_type, recurrence,
+                    (id, title, description, event_date, event_time, end_time, event_type, recurrence,
                      project_id, machine, prompt, notify_before_minutes,
                      created_by, metadata, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     event_id,
-                    title, description, event_date, event_time, event_type, recurrence,
+                    title, description, event_date, event_time, end_time, event_type, recurrence,
                     project_id, machine, prompt, notify_before_minutes,
                     created_by, json.dumps(metadata or {}), now, now,
                 ),
@@ -179,7 +221,7 @@ class CalendarManager:
     def update_event(self, event_id: int, **updates: Any) -> bool:
         """Update any fields on an event. Returns True if event was found."""
         allowed = {
-            "title", "description", "event_date", "event_time", "event_type",
+            "title", "description", "event_date", "event_time", "end_time", "event_type",
             "recurrence", "project_id", "machine", "prompt", "notify_before_minutes",
             "status", "created_by", "metadata",
         }
@@ -195,6 +237,8 @@ class CalendarManager:
             updates["event_time"] = None  # an empty time clears it
         if updates.get("event_time") is not None:
             validate_event_time(updates["event_time"])
+        if updates.get("end_time") == "":
+            updates["end_time"] = None  # an empty end clears it
         if "event_type" in updates:
             ok, err = validate_event_type(updates["event_type"])
             if not ok:
@@ -207,10 +251,28 @@ class CalendarManager:
         values = list(updates.values()) + [event_id]
 
         with self._conn() as conn:
-            cursor = conn.execute(
-                f"UPDATE calendar_events SET {set_clause} WHERE id = ?", values
-            )
-            conn.commit()
+            # Read, check and write the time pair under one write lock, so a
+            # concurrent update can't pair this change with a stale value.
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                if "event_time" in updates or "end_time" in updates:
+                    row = conn.execute(
+                        "SELECT event_date, event_time, end_time FROM calendar_events WHERE id = ?", (event_id,)
+                    ).fetchone()
+                    if row is None:
+                        conn.rollback()
+                        return False
+                    end = updates.get("end_time", row["end_time"])
+                    validate_block(updates.get("event_time", row["event_time"]), end)
+                    if end is not None:  # a block's date is parsed, so an old stored one must be canonical
+                        validate_event_date(updates.get("event_date", row["event_date"]))
+                cursor = conn.execute(
+                    f"UPDATE calendar_events SET {set_clause} WHERE id = ?", values
+                )
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
             return cursor.rowcount > 0
 
     def mark_done(self, event_id: int) -> bool:
@@ -234,6 +296,67 @@ class CalendarManager:
     # ------------------------------------------------------------------
     # Read — events
     # ------------------------------------------------------------------
+
+    def events_on(self, day: date) -> Dict[str, List[Dict[str, Any]]]:
+        """Active events happening on ``day``, recurring ones included, untimed first, then by time.
+
+        An event whose stored date or time is unreadable (written before the
+        strict validators) can't be placed on a day, so it is returned under
+        ``unreadable`` instead of failing the whole day or vanishing.
+        """
+        with self._conn() as conn:
+            rows = conn.execute("SELECT * FROM calendar_events WHERE status = 'active'").fetchall()
+        found: Dict[str, List[Dict[str, Any]]] = {"events": [], "unreadable": []}
+        for event in (_row_to_dict(row) for row in rows):
+            try:
+                validate_event_date(event["event_date"])
+                if event["event_time"] is not None:
+                    validate_event_time(event["event_time"])
+            except ValueError:
+                found["unreadable"].append(event)
+                continue
+            if _next_occurrence(event, day) == day:
+                found["events"].append(event)
+        found["events"].sort(key=lambda e: (e["event_time"] is not None, e["event_time"] or ""))
+        return found
+
+    def blocks_at(self, when: datetime) -> Dict[str, Optional[Dict[str, Any]]]:
+        """The block ``when`` falls in and the next one to start, from active timed events with an end.
+
+        Everything is this machine's wall clock: event times are written in it
+        and ``when`` is read from it, so there is no time zone to reconcile.
+        Each result carries naive local ``start`` and ``end`` datetimes.
+        Overlapping blocks resolve to the one that started last; ``next`` is
+        the earliest next occurrence over all blocks, however far ahead.
+        """
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM calendar_events WHERE status = 'active'"
+                " AND event_time IS NOT NULL AND end_time IS NOT NULL"
+            ).fetchall()
+        events = [_row_to_dict(row) for row in rows]
+        now = when.replace(second=0, microsecond=0, tzinfo=None)
+
+        def at(event: Dict[str, Any], day: date) -> Dict[str, Any]:
+            def clock(hhmm: str) -> datetime:
+                return datetime.combine(day, datetime.strptime(hhmm, "%H:%M").time())
+            return {**event, "start": clock(event["event_time"]), "end": clock(event["end_time"])}
+
+        today = now.date()
+        todays = sorted((at(e, today) for e in events if _next_occurrence(e, today) == today), key=lambda e: e["start"])
+        live = [e for e in todays if e["start"] <= now < e["end"]]
+        upcoming = []
+        for event in events:
+            day = _next_occurrence(event, today)
+            if day == today and at(event, today)["start"] <= now:
+                day = _next_occurrence(event, today + timedelta(days=1))
+            if day is not None:
+                upcoming.append(at(event, day))
+        found: Dict[str, Optional[Dict[str, Any]]] = {
+            "current": live[-1] if live else None,
+            "next": min(upcoming, key=lambda e: e["start"]) if upcoming else None,
+        }
+        return found
 
     def get_event(self, event_id: int) -> Optional[Dict[str, Any]]:
         with self._conn() as conn:

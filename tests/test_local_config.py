@@ -5,6 +5,7 @@ projects, so every integration path comes from this file, and a mistake in it
 must be loud rather than turn an integration off.
 """
 
+import shutil
 import os
 from pathlib import Path
 from unittest.mock import patch
@@ -15,6 +16,9 @@ from hypothesis import example, given, settings
 from hypothesis import strategies as st
 
 import pt
+from commands import message as message_commands  # noqa: E402
+from commands import memory as memory_commands  # noqa: E402
+from commands import config as config_commands  # noqa: E402
 from scripts import config
 
 
@@ -68,8 +72,8 @@ def test_a_bad_file_is_loud(tmp_path, monkeypatch, text, message):
 
 def test_chat_addresses_are_read_and_join_the_projects(tmp_path, monkeypatch):
     write(tmp_path, monkeypatch, '[chat]\naddresses = ["architect", "me"]\n')
-    monkeypatch.setattr(pt, "DatabaseManager", lambda: type("D", (), {"get_all_projects": lambda self: [{"id": "app"}]})())
-    assert pt._known_chat_addresses() == {"architect", "me", "app"}
+    monkeypatch.setattr(message_commands, "DatabaseManager", lambda: type("D", (), {"get_all_projects": lambda self: [{"id": "app"}]})())
+    assert message_commands._known_chat_addresses() == {"architect", "me", "app"}
 
 
 @pytest.mark.parametrize("text", ["chat = 1\n", '[chat]\nnames = ["a"]\n', '[chat]\naddresses = "a"\n',
@@ -77,8 +81,8 @@ def test_chat_addresses_are_read_and_join_the_projects(tmp_path, monkeypatch):
 def test_a_bad_chat_section_refuses_the_send(tmp_path, monkeypatch, text):
     write(tmp_path, monkeypatch, text)
     monkeypatch.setenv("PT_CALLER_CWD", str(tmp_path))
-    with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "me"}), \
-         patch("pt._chat_api_request") as request:
+    with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "me"}), \
+         patch("commands.message._chat_api_request") as request:
         result = CliRunner().invoke(pt.cli, ["message", "send", "hi", "--to", "architect"])
     assert result.exit_code != 0 and "[chat]" in result.output
     request.assert_not_called()
@@ -113,9 +117,9 @@ def test_a_send_is_checked_even_when_nothing_is_reachable_but_the_config(tmp_pat
     """No projects is a real answer, not "cannot verify". A bare name reaches any machine, name@machine one."""
     write(tmp_path, monkeypatch, f"[chat]\naddresses = {addresses}\n" if addresses else "")
     monkeypatch.setenv("PT_CALLER_CWD", str(tmp_path))
-    monkeypatch.setattr(pt, "DatabaseManager", lambda: type("D", (), {"get_all_projects": lambda self: []})())
-    with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "me"}), \
-         patch("pt._chat_api_request", return_value={"id": 1}) as request:
+    monkeypatch.setattr(message_commands, "DatabaseManager", lambda: type("D", (), {"get_all_projects": lambda self: []})())
+    with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "me"}), \
+         patch("commands.message._chat_api_request", return_value={"id": 1}) as request:
         result = CliRunner().invoke(pt.cli, ["message", "send", "hi", *args])
     assert (result.exit_code == 0) is sent, result.output
     assert request.called is sent
@@ -204,17 +208,17 @@ def test_brain_runs_without_doppler_when_none_is_configured(tmp_path, monkeypatc
     write(tmp_path, monkeypatch, f'[memory]\nroot = "{tmp_path}"\n')
     seen = []
     monkeypatch.setattr(pt.subprocess, "run", lambda cmd, check, cwd: seen.append((cmd, cwd)) or type("R", (), {"returncode": 0})())
-    pt._run_brain("stats")
+    memory_commands._run_brain("stats")
     assert seen == [(["uv", "run", str(tmp_path / "brain.py"), "stats"], str(tmp_path))]
 
 
 def test_brain_runs_under_the_configured_doppler_project(tmp_path, monkeypatch):
     (tmp_path / "brain.py").write_text("")
     write(tmp_path, monkeypatch, f'[memory]\nroot = "{tmp_path}"\ndoppler_project = "mem"\ndoppler_config = "dev"\n')
-    monkeypatch.setattr(pt.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(shutil, "which", lambda name: f"/usr/bin/{name}")
     seen = []
     monkeypatch.setattr(pt.subprocess, "run", lambda cmd, check, cwd: seen.append(cmd) or type("R", (), {"returncode": 0})())
-    pt._run_brain("stats")
+    memory_commands._run_brain("stats")
     assert seen == [["doppler", "run", "--project", "mem", "--config", "dev", "--",
                      "uv", "run", str(tmp_path / "brain.py"), "stats"]]
 
@@ -273,7 +277,7 @@ def test_every_root_form_resolves_to_one_absolute_dir_brain_runs_in(tmp_path, mo
     assert config.memory_integration().root == want
     seen = []
     monkeypatch.setattr(pt.subprocess, "run", lambda cmd, check, cwd: seen.append((cmd, cwd)) or type("R", (), {"returncode": 0})())
-    pt._run_brain("stats")
+    memory_commands._run_brain("stats")
     assert seen == [(["uv", "run", str(want / "brain.py"), "stats"], str(want))]
 
 
@@ -308,7 +312,7 @@ def test_a_bad_config_fails_doctor_and_config_show_with_the_reason(tmp_path, mon
     doctor = json.loads(CliRunner().invoke(pt.cli, ["doctor", "--json"]).output)
     check = next(c for c in doctor["checks"] if c["name"] == "memory_readonly")
     assert check["ok"] is False and str(path) in check["detail"]
-    shown = pt._effective_config_payload()
+    shown = config_commands._effective_config_payload()
     assert shown["ok"] is False and str(path) in shown["local_config_error"] and shown["memory_db_path"] is None
 
 
@@ -340,7 +344,7 @@ def test_one_command_reads_the_config_once(tmp_path, monkeypatch):
         db.close()
         stores.append(config.MemoryIntegration(tmp_path / name))
     calls = iter(stores)
-    monkeypatch.setattr(pt, "memory_integration", lambda: next(calls))
+    monkeypatch.setattr(memory_commands, "memory_integration", lambda: next(calls))
     result = CliRunner().invoke(pt.cli, ["memory", "recent", "--json"])
     assert json.loads(result.output)["backend"]["path"] == (tmp_path / "a" / "brain.db").as_posix()
 
@@ -359,14 +363,14 @@ def test_a_directory_or_unreadable_config_is_a_config_error(tmp_path, monkeypatc
         locked.chmod(0o600)
 
 
-def test_an_unknown_user_in_pt_config_is_a_config_error(monkeypatch):
-    monkeypatch.setenv("PT_CONFIG", "~no-such-user-8677/config.toml")
-    assert config.local_config_path() == config.Path("~no-such-user-8677/config.toml")
-    with pytest.raises(ValueError, match="can't be expanded"):
+@pytest.mark.parametrize("pt_config", ["config.toml", "./config.toml", "~/config.toml"])
+def test_a_pt_config_that_is_not_absolute_is_a_config_error(monkeypatch, pt_config):
+    monkeypatch.setenv("PT_CONFIG", pt_config)
+    with pytest.raises(ValueError, match="must be an absolute path"):
         config.memory_integration()
 
 
-BROKEN_CONFIG_PATHS = ["~no-such-user-8677/config.toml", "{tmp}", "{tmp}/bad.toml", "."]
+BROKEN_CONFIG_PATHS = ["~/config.toml", "{tmp}", "{tmp}/bad.toml", "."]
 
 
 @pytest.mark.parametrize("override", [None, "{tmp}/memory.db"])
@@ -393,56 +397,12 @@ def test_diagnostics_report_a_broken_config_instead_of_crashing(tmp_path, monkey
     assert text.exception is None or isinstance(text.exception, SystemExit), text.output
 
 
-@settings(max_examples=300, deadline=None)
-@given(pt_config=st.text(min_size=1).filter(lambda s: "\x00" not in s))
-def test_any_pt_config_normalises_without_raising_or_reading(tmp_path_factory, pt_config):
-    """local_config_path() never raises, never reads, and a relative value lands under the caller's dir."""
-    import os
-
-    home, caller = tmp_path_factory.mktemp("home"), tmp_path_factory.mktemp("caller")
-    saved = {k: os.environ.get(k) for k in ("PT_CONFIG", "HOME", "PT_CALLER_CWD")}
-    os.environ.update(PT_CONFIG=pt_config, HOME=str(home), PT_CALLER_CWD=str(caller))
-    try:
-        path = config.local_config_path()
-        if not pt_config.strip():
-            assert path == home / ".config" / "project-tracker" / "config.toml"
-        elif not path.parts or not path.parts[0].startswith("~"):
-            assert path.is_absolute()
-            if not config.Path(pt_config.strip()).expanduser().is_absolute():
-                assert path.is_relative_to(caller)
-    finally:
-        for key, value in saved.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
-
-
 @pytest.mark.parametrize("blank", ["", " ", "\t\n"])
 def test_a_blank_pt_config_uses_the_default_under_home_and_nothing_else(tmp_path, monkeypatch, blank):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("PT_CONFIG", blank)
     assert config.local_config_path() == tmp_path / ".config" / "project-tracker" / "config.toml"
     assert config.local_config() == {} and config.memory_integration() is None
-
-
-def test_a_relative_pt_config_is_relative_to_where_pt_was_run(tmp_path):
-    """Through the real launcher, run from a directory that is not the checkout."""
-    import json
-    import os
-    import subprocess
-
-    caller = tmp_path / "caller"
-    (caller / "store").mkdir(parents=True)
-    (caller / "config.toml").write_text('[memory]\nroot = "store"\n')
-    launcher = config.PROJECT_ROOT / "pt"
-    env = {**os.environ, "PT_CONFIG": "./config.toml", "PT_DB_PATH": os.environ["PT_DB_PATH"]}
-    env.pop("PT_MEMORY_DB_PATH", None)
-    result = subprocess.run([str(launcher), "config", "show", "--effective", "--json"], cwd=caller, env=env,
-                            capture_output=True, text=True, timeout=60)
-    payload = json.loads(result.stdout)
-    assert payload["local_config_path"] == str(caller / "config.toml")
-    assert payload["memory_db_path"] == str((caller / "store" / "brain.db").resolve())
 
 
 @pytest.mark.parametrize("args", [["memory", "stats"], ["memory", "stats", "--json"], ["doctor", "--json"]])
@@ -485,8 +445,8 @@ def test_config_show_reads_the_config_once(tmp_path, monkeypatch):
     """Health of every section and the memory path come from one read: a second would raise StopIteration."""
     monkeypatch.delenv("PT_MEMORY_DB_PATH", raising=False)
     reads = iter([{"memory": {"root": str(tmp_path / "a")}, "chat": {"addresses": ["ops"]}}])
-    monkeypatch.setattr(pt, "local_config", lambda: next(reads))
-    payload = pt._effective_config_payload()
+    monkeypatch.setattr(config_commands, "local_config", lambda: next(reads))
+    payload = config_commands._effective_config_payload()
     assert (payload["ok"], payload["local_config_error"]) == (True, None)
     assert payload["memory_db_path"] == str(tmp_path / "a" / "brain.db")
 
@@ -649,3 +609,22 @@ def test_graph_settings_load_exactly_or_name_the_file(tmp_path_factory, section)
         else:
             with pytest.raises(ValueError, match=r"config\.toml: \[graph\]"):
                 config.graph_settings({"graph": section})
+
+
+def test_config_reports_the_repo_root_as_project_root():
+    """`pt config` names the checkout pt runs from, not its scripts/ folder."""
+    root = Path(config_commands.__file__).resolve().parents[2]
+    assert (root / "pt").is_file()
+    assert config_commands._effective_config_payload()["project_root"] == str(root)
+
+
+def test_owner_name_defaults_to_owner_and_rejects_bad_values():
+    """#8961: [owner] name is the person the board waits on; its prefix is the name in capitals."""
+    from scripts.config import owner_name, owner_prefix
+
+    assert owner_name({}) == "Owner" and owner_prefix("Owner") == "OWNER:"
+    assert owner_name({"owner": {"name": "Robin"}}) == "Robin" and owner_prefix("Robin") == "ROBIN:"
+    for bad in ({"owner": {"name": ""}}, {"owner": {"name": " Robin"}}, {"owner": {"name": "A:B"}},
+                {"owner": {"name": 3}}, {"owner": {"prefix": "X:"}}, {"owner": "Robin"}):
+        with pytest.raises(ValueError, match=r"\[owner\]"):
+            owner_name(bad)

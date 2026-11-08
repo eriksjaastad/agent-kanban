@@ -84,9 +84,9 @@ def test_built_in_mark_loses_to_a_removal_that_lands_first(db, monkeypatch) -> N
         with original(self) as conn:
             yield RemovalLandsFirst(conn)
 
-    monkeypatch.setattr(type(db), "_get_conn", racing_conn)
-    assert db.mark_reminder_built_in(reminder["id"]) is None
-    monkeypatch.undo()
+    with monkeypatch.context() as racing:  # undoes only this patch, not the suite's isolation
+        racing.setattr(type(db), "_get_conn", racing_conn)
+        assert db.mark_reminder_built_in(reminder["id"]) is None
     assert db.list_reminders() == {"active": [], "built_in": []}
 
 

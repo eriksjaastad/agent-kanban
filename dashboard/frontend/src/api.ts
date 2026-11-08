@@ -601,6 +601,7 @@ export interface CalendarEvent {
   description?: string;
   event_date: string;
   event_time?: string;
+  end_time?: string;
   event_type: 'reminder' | 'deadline' | 'milestone' | 'meeting' | 'recurring';
   recurrence?: string;
   project_id?: string;
@@ -637,11 +638,30 @@ export interface ScheduledJob {
   status: string;
   last_exit: number | null;
   running: boolean;
+  // Present when the job has a last run (#8847).
+  needed_owner?: boolean;
+  owner_cards?: number[];
+}
+
+export interface RunTally {
+  runs: number;
+  unattended: number;
+}
+
+// Runs recorded by scripts/record-run.sh over the last `days` days (#8847).
+export interface RunHistory {
+  days: number;
+  running: number;
+  jobs: Record<string, RunTally>;
+  daily: (RunTally & { date: string })[];
 }
 
 export interface ScheduledJobs {
+  owner: string;         // [owner] name in the local config
+  owner_prefix: string;  // what a card waiting on the owner starts with
   jobs: ScheduledJob[];
   errors: string[];
+  history?: RunHistory;
 }
 
 export interface CreateCalendarEventPayload {
@@ -656,6 +676,13 @@ export interface CreateCalendarEventPayload {
   notify_before_minutes?: number;
   recurrence?: string;
   created_by?: string;
+}
+
+/** Today's events on the server's clock, recurring ones included; events with an unreadable stored date come back apart (GET /api/calendar/today). */
+export async function fetchCalendarToday(signal?: AbortSignal): Promise<{ date: string; events: CalendarEvent[]; unreadable: CalendarEvent[] }> {
+  const response = await fetchWithErrorHandling(`${API_BASE}/calendar/today`, { signal });
+  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).detail || "Failed to fetch today's events");
+  return response.json();
 }
 
 export async function fetchCalendarEvents(params: {

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    LaunchAgent TEMPLATE: website stats for every site in sites/ (#8868), daily 6:30 AM local.
+
+    scripts/launchd/install-site-stats.sh substitutes @PT_HOME@ and @HOME@ and
+    loads the result; do not copy this file to ~/Library/LaunchAgents directly.
+    The run goes through record-run.sh, so it shows in Scheduled jobs. A closed
+    laptop runs it on the next wake.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.project-tracker.site-stats</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>@PT_HOME@/scripts/record-run.sh</string>
+        <string>local.project-tracker.site-stats</string>
+        <string>--</string>
+        <string>@PT_HOME@/pt</string>
+        <string>site-stats</string>
+        <string>run</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>6</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>@PT_HOME@/logs/site_stats.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>@PT_HOME@/logs/site_stats.stderr.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>@PT_HOME@</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:@HOME@/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>SEO_SPIDER_BIN</key>
+        <string>/Applications/Screaming Frog SEO Spider.app/Contents/MacOS/ScreamingFrogSEOSpiderLauncher</string>
+    </dict>
+</dict>
+</plist>

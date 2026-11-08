@@ -6,6 +6,10 @@ import { DashboardPage } from './DashboardPage';
 
 // Panels that fetch on their own — not under test here.
 vi.mock('./KanbanBreakdown', () => ({ KanbanBreakdown: () => null }));
+vi.mock('./UserFacingWeekly', () => ({ UserFacingWeekly: () => null }));
+vi.mock('./LiveSiteChanges', () => ({ LiveSiteChanges: () => null }));
+vi.mock('./ReviewHealth', () => ({ ReviewHealth: () => null }));
+vi.mock('./SiteStats', () => ({ SiteStats: () => null }));
 vi.mock('./ShadowPricingPanel', () => ({ ShadowPricingPanel: () => null }));
 
 const NOW = new Date().toISOString();

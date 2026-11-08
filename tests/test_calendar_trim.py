@@ -23,7 +23,7 @@ import dashboard.app as dashboard_app  # noqa: E402
 from db.schema import create_database  # noqa: E402
 
 EXPECTED_CALENDAR_COMMANDS = {
-    "add", "add-cron", "cancel", "crons", "done", "show", "update",
+    "add", "add-cron", "cancel", "crons", "done", "now", "show", "update",
 }
 
 BAD_DATES = ["2026-13-01", "tomorrow", "2026-02-30", "2026-1-5", "", "2026-01-01T00:00"]

@@ -27,6 +27,7 @@ import pytest
 from starlette.requests import Request
 
 import dashboard.app as dashboard_app
+import dashboard.routes.memory as memory_routes  # noqa: E402
 
 
 def _run_coro(coro):
@@ -157,7 +158,7 @@ def _force_brain_db_present(monkeypatch: pytest.MonkeyPatch, db_path: Path, fail
 def test_knowledge_graph_closes_connection_on_success(monkeypatch, brain_db):
     spy = _force_brain_db_present(monkeypatch, brain_db, fail=False)
 
-    result = _run_coro(dashboard_app.get_knowledge_graph(_request()))
+    result = _run_coro(memory_routes.get_knowledge_graph(_request()))
 
     assert _SpyConnection.close_calls == 1
     assert result["stats"]["total_nodes"] == 2
@@ -167,7 +168,7 @@ def test_knowledge_graph_closes_connection_on_success(monkeypatch, brain_db):
 def test_knowledge_graph_closes_connection_on_query_failure(monkeypatch, brain_db):
     _force_brain_db_present(monkeypatch, brain_db, fail=True)
 
-    result = _run_coro(dashboard_app.get_knowledge_graph(_request()))
+    result = _run_coro(memory_routes.get_knowledge_graph(_request()))
 
     assert _SpyConnection.close_calls == 1
     assert result.status_code == 500

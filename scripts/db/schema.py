@@ -153,36 +153,13 @@ def _check_fresh_database(db_path: Path) -> None:
         raise
     except Exception as e:
         # Don't block startup for check errors - just warn
-        print(f"⚠️  Warning: Could not check database freshness: {e}")
+        print(f"⚠️  Warning: Could not check database freshness: {e}", file=sys.stderr)
 
 
 def get_db_path() -> Path:
     """Get the database file path."""
     env_path = os.getenv("PT_DB_PATH")
     return Path(env_path) if env_path else DATABASE_PATH
-
-
-
-def has_legacy_crsql_triggers(db_path: Path) -> bool:
-    """True if the database still carries `__crsql_` triggers (pre-migration 018).
-
-    Such triggers call cr-sqlite functions, which no connection loads any more,
-    so every write to the affected tables fails with "no such function:
-    crsql_internal_sync_bit". Reads are unaffected. A missing file reports
-    False; any other error (unreadable or corrupt file) propagates.
-    """
-    from contextlib import closing
-
-    db_path = Path(db_path)
-    if not db_path.exists():
-        return False
-    uri = db_path.resolve().as_uri() + "?mode=ro"
-    with closing(sqlite3.connect(uri, uri=True)) as conn:
-        return conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='trigger' "
-            "AND name LIKE '%\\_\\_crsql\\_%' ESCAPE '\\' LIMIT 1"
-        ).fetchone() is not None
-
 
 
 
@@ -242,7 +219,8 @@ def create_database(db_path: Path | None = None) -> None:
         version = _schema_sql_version(schema)
         statements = _statements(schema)
         contained = [m for m in discover_migrations(MIGRATIONS_DIR, verbose=False) if m.version <= version]
-        missing = sorted(set(range(2, version + 1)) - {m.version for m in contained})
+        missing = sorted(set(range(contained[0].version if contained else version + 1, version + 1))
+                         - {m.version for m in contained})
         if missing:
             raise RuntimeError(f"schema.sql contains migrations {missing} that are not in {MIGRATIONS_DIR}")
         now = datetime.now(UTC)

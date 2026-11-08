@@ -14,13 +14,14 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 import dashboard.app as dashboard_app
+import dashboard.routes.agentic as agentic_routes  # noqa: E402
 from fastapi.testclient import TestClient
 
 
 @pytest.fixture
 def markers_file(tmp_path, monkeypatch) -> Path:
     path = tmp_path / "agentic_markers.json"
-    monkeypatch.setattr(dashboard_app, "MARKERS_PATH", path)
+    monkeypatch.setattr(agentic_routes, "MARKERS_PATH", path)
     return path
 
 

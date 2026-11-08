@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import dashboard.app as dashboard_app
+import dashboard.routes.agentic as agentic_routes  # noqa: E402
 from dashboard.brain_stats import bash_stats, tool_stats
 
 TODAY = date(2026, 4, 21)
@@ -96,7 +97,7 @@ def test_window_ends_on_the_utc_date_the_store_stamps(memory_store, monkeypatch)
         def now(cls, tz=None):
             return datetime(2026, 4, 22, 1, 0, tzinfo=timezone.utc) if tz else datetime(2026, 4, 21, 18, 0)
 
-    monkeypatch.setattr(dashboard_app, "datetime", EveningInPacific)
+    monkeypatch.setattr(agentic_routes, "datetime", EveningInPacific)
     _brain_db(
         memory_store.root,
         "CREATE TABLE tool_invocations (tool_name TEXT, project TEXT, model TEXT, invoked_at TEXT)",

@@ -1,5 +1,5 @@
 import { StrictMode } from 'react';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CalendarPage } from './CalendarPage';
@@ -8,12 +8,14 @@ vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api')>()),
   fetchCalendarEvents: vi.fn(),
   fetchCalendarCrons: vi.fn(),
+  fetchCalendarToday: vi.fn(),
   fetchProjects: vi.fn(),
   markCalendarEventDone: vi.fn(),
 }));
 
 import userEvent from '@testing-library/user-event';
-import { fetchCalendarCrons, fetchCalendarEvents, fetchProjects, markCalendarEventDone } from '../api';
+import { fetchCalendarCrons, fetchCalendarEvents, fetchCalendarToday, fetchProjects, markCalendarEventDone } from '../api';
+import type { CalendarEvent } from '../api';
 
 function abortable(signal?: AbortSignal) {
   return new Promise<never>((_resolve, reject) => {
@@ -29,6 +31,7 @@ describe('CalendarPage load', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(fetchCalendarCrons).mockResolvedValue([]);
+    vi.mocked(fetchCalendarToday).mockResolvedValue({ date: '2026-11-02', events: [], unreadable: [] });
     vi.mocked(fetchProjects).mockResolvedValue([{ id: 'p', name: 'Proj' }] as never);
   });
 
@@ -85,6 +88,7 @@ describe('CalendarPage load', () => {
     vi.mocked(markCalendarEventDone).mockResolvedValue(undefined as never);
     const user = userEvent.setup();
     render(<CalendarPage />);
+    await user.click(await screen.findByRole('tab', { name: /Month/ }));  // Today is the default tab
     const pills = await screen.findAllByRole('button', { name: /Big event/ });
 
     vi.mocked(fetchProjects).mockRejectedValueOnce(new Error('projects down'));
@@ -98,4 +102,37 @@ describe('CalendarPage load', () => {
     render(<CalendarPage />);
     expect(await screen.findByText('Error: events down')).toBeTruthy();
   });
+
+  it('reloads everything once the server\'s date moves past the shown one, on a timer or on focus', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.mocked(fetchCalendarEvents).mockResolvedValue([]);
+      const day = (date: string) => ({ date, events: [], unreadable: [] });
+      vi.mocked(fetchCalendarToday).mockResolvedValue(day('2026-11-02'));
+      render(<CalendarPage />);
+      await screen.findByRole('tab', { name: /Today/ });
+      expect(vi.mocked(fetchCalendarEvents)).toHaveBeenCalledTimes(1);
+      await act(async () => { vi.advanceTimersByTime(60_000); });  // server still on Nov 2
+      expect(vi.mocked(fetchCalendarEvents)).toHaveBeenCalledTimes(1);
+      vi.mocked(fetchCalendarToday).mockResolvedValue(day('2026-11-03'));
+      await act(async () => { vi.advanceTimersByTime(60_000); });
+      await waitFor(() => expect(vi.mocked(fetchCalendarEvents)).toHaveBeenCalledTimes(2));
+      vi.mocked(fetchCalendarToday).mockResolvedValue(day('2026-11-04'));
+      await act(async () => { window.dispatchEvent(new Event('focus')); });
+      await waitFor(() => expect(vi.mocked(fetchCalendarEvents)).toHaveBeenCalledTimes(3));
+      // A slow reload is never restarted by later ticks or focus.
+      let finish: (v: CalendarEvent[]) => void = () => {};
+      vi.mocked(fetchCalendarEvents).mockImplementation(() => new Promise((r) => { finish = r; }));
+      vi.mocked(fetchCalendarToday).mockResolvedValue(day('2026-11-05'));
+      await act(async () => { vi.advanceTimersByTime(60_000); });
+      await waitFor(() => expect(vi.mocked(fetchCalendarEvents)).toHaveBeenCalledTimes(4));
+      await act(async () => { window.dispatchEvent(new Event('focus')); vi.advanceTimersByTime(180_000); });
+      expect(vi.mocked(fetchCalendarEvents)).toHaveBeenCalledTimes(4);
+      await act(async () => { finish([]); });
+      expect(await screen.findByText('Nothing scheduled today.')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
+

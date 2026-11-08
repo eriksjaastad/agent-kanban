@@ -7,6 +7,7 @@ for /api/rebuild-status instead of reporting "done" over the old graph.
 import pytest
 
 import dashboard.app as dashboard_app
+import dashboard.routes.memory as memory_routes  # noqa: E402
 import pt
 
 
@@ -26,9 +27,9 @@ def test_the_tracked_rebuild_reports_what_the_rebuild_did(tmp_path, monkeypatch,
     monkeypatch.setattr(pt, "GRAPH_ANALYSIS_PATH", tmp_path / "analysis.md")
     monkeypatch.setattr(pt, "PROJECTS_BASE_DIR", str(tmp_path / "projects"))
 
-    job_id = dashboard_app._create_rebuild_job("project_graph")
-    dashboard_app._run_tracked_rebuild(job_id, pt.rebuild_project_graph)
-    job = dashboard_app._rebuild_jobs[job_id]
+    job_id = memory_routes._create_rebuild_job("project_graph")
+    memory_routes._run_tracked_rebuild(job_id, pt.rebuild_project_graph)
+    job = memory_routes._rebuild_jobs[job_id]
     assert job["status"] == status
     if status == "error":
         assert "[graph]" in job["error"] and graph.read_text() == "old"

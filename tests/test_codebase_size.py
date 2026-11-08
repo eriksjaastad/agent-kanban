@@ -15,11 +15,9 @@ from click.testing import CliRunner
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from db.migration_runner import discover_migrations  # noqa: E402
 from pt import cli  # noqa: E402
 from scripts import codebase_size as cs  # noqa: E402
 
-MIGRATIONS_DIR = Path(__file__).parent.parent / "scripts" / "db" / "migrations"
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +252,7 @@ def test_score_none_without_usable_baseline() -> None:
 
 
 def test_score_text_never_shows_negative_zero():
-    from pt import _size_score_text
+    from commands.size import _size_score_text
 
     assert _size_score_text(None) == "-"
     assert _size_score_text(-0.006) == "+0.0"
@@ -307,63 +305,6 @@ def test_table_refuses_update_and_delete(mgr, conn) -> None:
         conn.execute("DELETE FROM codebase_size_snapshots")
     conn.rollback()
     assert mgr.codebase_baseline()[1]["a"].code == 5
-
-
-# ---------------------------------------------------------------------------
-# migration 017
-# ---------------------------------------------------------------------------
-
-
-def _m(version: int):
-    return next(m for m in discover_migrations(MIGRATIONS_DIR) if m.version == version)
-
-
-def test_migration_017_on_fresh_db_and_after_015(tmp_path: Path) -> None:
-    fresh = sqlite3.connect(tmp_path / "fresh.db")
-    _m(17).up(fresh)
-    _m(17).up(fresh)  # idempotent
-    cols = [r[1] for r in fresh.execute("PRAGMA table_info(codebase_size_snapshots)")]
-    assert cols == [
-        "id", "run_id", "snapshot_date", "project", "code_lines", "test_lines",
-        "doc_files", "doc_lines", "last_commit", "commits_90d", "scanned_at",
-    ]
-    fresh.execute(
-        "INSERT INTO codebase_size_snapshots (run_id, snapshot_date, project, code_lines,"
-        " test_lines, doc_files, doc_lines, scanned_at) VALUES ('r','d','p',0,0,0,0,'t')"
-    )
-    with pytest.raises(sqlite3.IntegrityError):  # one row per project per run
-        fresh.execute(
-            "INSERT INTO codebase_size_snapshots (run_id, snapshot_date, project, code_lines,"
-            " test_lines, doc_files, doc_lines, scanned_at) VALUES ('r','d','p',1,0,0,0,'t')"
-        )
-
-    after = sqlite3.connect(tmp_path / "after.db")
-    _m(15).up(after)
-    _m(17).up(after)
-    tables = {r[0] for r in after.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert {"outreach_contacts", "codebase_size_snapshots"} <= tables
-
-
-def _codebase_objects(db: sqlite3.Connection) -> dict[str, str]:
-    return {
-        name: " ".join(sql.split())
-        for name, sql in db.execute(
-            "SELECT name, sql FROM sqlite_master "
-            "WHERE tbl_name = 'codebase_size_snapshots' AND sql IS NOT NULL"
-        )
-    }
-
-
-def test_schema_py_and_migration_017_create_the_same_objects(tmp_path: Path, conn) -> None:
-    migrated = sqlite3.connect(tmp_path / "migrated.db")
-    _m(17).up(migrated)
-    expected = _codebase_objects(migrated)
-    assert set(expected) == {
-        "codebase_size_snapshots", "codebase_size_snapshots_no_update",
-        "codebase_size_snapshots_no_delete",
-    }
-    # `conn` is the per-test DB that schema.py built.
-    assert _codebase_objects(conn) == expected
 
 
 # ---------------------------------------------------------------------------

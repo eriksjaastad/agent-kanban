@@ -16,6 +16,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
@@ -399,94 +400,32 @@ def test_handoff_error_path_emits_ok_false(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# MEDIUM #1 — _auto_classify_files surfaces failures via stderr warnings
+# A git failure is an error, never a guessed-empty branch or file list
 # ---------------------------------------------------------------------------
 
-def test_auto_files_warns_on_git_missing(tmp_path: Path, monkeypatch) -> None:
-    """If git binary is unavailable, --auto-files emits stderr warning and
-    still creates a handoff with an empty file_list."""
-    db_path = None
-    _make_tracker_db()
-
+@pytest.mark.parametrize("args", [["--auto-files", "--branch", "b"], []], ids=["auto_files", "branch"])
+@pytest.mark.parametrize("failure, message", [
+    (FileNotFoundError("git not found"), "git not found"),
+    (subprocess.TimeoutExpired(cmd="git", timeout=10), "timed out"),
+    (subprocess.CompletedProcess([], 128, "", "fatal: not a git repository"), "exited 128: fatal: not a git"),
+], ids=["missing", "timeout", "nonzero"])
+def test_a_git_failure_records_nothing(monkeypatch, args, failure, message) -> None:
     import pt as pt_module
 
-    def _raise_fnf(*args, **kwargs):
-        raise FileNotFoundError("git not found")
-
-    monkeypatch.setattr(pt_module.subprocess, "run", _raise_fnf)
-
-    runner = CliRunner()
-    result = runner.invoke(
-        cli,
-        ["handoff", "create", "6151", "--json", "--auto-files"] + _REQUIRED_CREATE_ARGS,
-        env={**_COMMON_ENV, "PT_DB_PATH": str(db_path or os.environ["PT_DB_PATH"])},
-        catch_exceptions=False,
-    )
-    assert result.exit_code == 0, result.output
-    assert "git not available" in result.stderr
-    payload = json.loads(result.stdout)
-    assert payload["ok"] is True
-    assert payload["result"]["file_list"] == []
-
-
-def test_auto_files_warns_on_git_timeout(tmp_path: Path, monkeypatch) -> None:
-    """If git status times out, --auto-files emits stderr warning and
-    still creates a handoff with an empty file_list."""
-    db_path = None
     _make_tracker_db()
 
-    import pt as pt_module
+    def fake_run(*_args, **_kwargs):
+        if isinstance(failure, BaseException):
+            raise failure
+        return failure
 
-    def _raise_timeout(*args, **kwargs):
-        raise subprocess.TimeoutExpired(cmd=["git", "status", "--porcelain"], timeout=10)
-
-    monkeypatch.setattr(pt_module.subprocess, "run", _raise_timeout)
-
-    runner = CliRunner()
-    result = runner.invoke(
-        cli,
-        ["handoff", "create", "6151", "--json", "--auto-files"] + _REQUIRED_CREATE_ARGS,
-        env={**_COMMON_ENV, "PT_DB_PATH": str(db_path or os.environ["PT_DB_PATH"])},
-        catch_exceptions=False,
-    )
-    assert result.exit_code == 0, result.output
-    assert "timed out" in result.stderr
-    payload = json.loads(result.stdout)
-    assert payload["ok"] is True
-    assert payload["result"]["file_list"] == []
-
-
-def test_auto_files_warns_on_git_nonzero_exit(tmp_path: Path, monkeypatch) -> None:
-    """If git status returns non-zero exit code, --auto-files emits stderr
-    warning and still creates a handoff with an empty file_list."""
-    db_path = None
-    _make_tracker_db()
-
-    import pt as pt_module
-
-    def _fake_run(*args, **kwargs):
-        return subprocess.CompletedProcess(
-            args=args[0] if args else [],
-            returncode=128,
-            stdout="",
-            stderr="fatal: not a git repository (or any of the parent directories): .git",
-        )
-
-    monkeypatch.setattr(pt_module.subprocess, "run", _fake_run)
-
-    runner = CliRunner()
-    result = runner.invoke(
-        cli,
-        ["handoff", "create", "6151", "--json", "--auto-files"] + _REQUIRED_CREATE_ARGS,
-        env={**_COMMON_ENV, "PT_DB_PATH": str(db_path or os.environ["PT_DB_PATH"])},
-        catch_exceptions=False,
-    )
-    assert result.exit_code == 0, result.output
-    assert "exit code 128" in result.stderr
-    assert "not a git repository" in result.stderr
-    payload = json.loads(result.stdout)
-    assert payload["ok"] is True
-    assert payload["result"]["file_list"] == []
+    monkeypatch.setattr(pt_module.subprocess, "run", fake_run)
+    result = _invoke_on_db(None, ["handoff", "create", "6151", "--json", *args] + _REQUIRED_CREATE_ARGS)
+    payload = json.loads(result.output)
+    assert result.exit_code != 0 and payload["ok"] is False
+    assert payload["error"]["class"] == "query_failure" and message in payload["error"]["message"]
+    listed = json.loads(_invoke_on_db(None, ["handoff", "list", "--json"]).output)["result"]
+    assert listed == []
 
 
 # ---------------------------------------------------------------------------

@@ -251,9 +251,9 @@ def test_volunteer_sections_come_from_one_snapshot(db, monkeypatch) -> None:
             proxies.append(proxy)
             yield proxy
 
-    monkeypatch.setattr(db, "_get_conn", proxied_conn)
-    sections = db.get_volunteer_roles()
-    monkeypatch.undo()
+    with monkeypatch.context() as proxied:  # undoes only this patch, not the suite's isolation
+        proxied.setattr(db, "_get_conn", proxied_conn)
+        sections = db.get_volunteer_roles()
 
     assert proxies and proxies[0].fired
     placements = [name for name in ("current", "applied", "possible", "possible_stale")

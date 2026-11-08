@@ -299,6 +299,24 @@ def test_apply_migration_rolls_back_ddl_and_ledger_on_failure(
     assert cur.fetchone() is None
 
 
+def test_apply_migration_reports_the_real_error_when_sqlite_already_rolled_back(
+    tmp_path: Path,
+) -> None:
+    """On disk full or an I/O error SQLite has already rolled back when the
+    error reaches the runner; its own ROLLBACK must not replace that error."""
+    from db.migration_runner import Migration
+
+    def ends_transaction_then_fails(conn: sqlite3.Connection) -> None:
+        conn.execute("ROLLBACK")
+        raise sqlite3.OperationalError("database or disk is full")
+
+    conn = _ledger_conn()
+    migration = Migration(99, "full", tmp_path / "099_full.py", ends_transaction_then_fails)
+    with pytest.raises(sqlite3.OperationalError, match="disk is full"):
+        apply_migration(conn, migration)
+    assert applied_versions(conn) == set()
+
+
 # ---------------------------------------------------------------------
 # apply_all
 # ---------------------------------------------------------------------
@@ -361,33 +379,3 @@ def test_apply_all_stops_at_first_failure_and_preserves_prior_state(
     assert "ok_001" in names
     assert "before_error" not in names
     assert "never_runs_003" not in names
-
-
-# ---------------------------------------------------------------------
-# Real 002 migration
-# ---------------------------------------------------------------------
-
-
-def test_real_002_migration_creates_both_ledgers() -> None:
-    """Exercise the actual migration file this PR ships — not a mock."""
-    migrations_dir = Path(__file__).parent.parent / "scripts" / "db" / "migrations"
-    real_002 = next(
-        m for m in discover_migrations(migrations_dir) if m.version == 2
-    )
-    assert real_002.name == "add_sync_ledgers"
-
-    conn = sqlite3.connect(":memory:")  # no ledger yet — cold start
-    apply_migration(conn, real_002)
-
-    # Both tables exist.
-    tables = {
-        r[0]
-        for r in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()
-    }
-    assert "schema_migrations" in tables
-    assert "schema_migration_announcements" in tables
-
-    # Ledger recorded this migration as applied.
-    assert applied_versions(conn) == {2}

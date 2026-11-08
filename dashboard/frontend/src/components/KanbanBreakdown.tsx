@@ -13,8 +13,20 @@ interface ProjectCount {
   count: number;
 }
 
+interface OwnerCard {
+  display_id: number | null;
+  project_id: string;
+  project: string;
+  text: string;
+  status: string;
+  age_days: number;
+}
+
 interface BreakdownData {
   statuses: string[];
+  owner: string;
+  owner_prefix: string;
+  waiting_on_owner: OwnerCard[];
   columns: Record<string, ProjectCount[]>;
   totals: Record<string, number>;
   generated_at: string;
@@ -107,6 +119,20 @@ export function KanbanBreakdown() {
               {expanded ? 'Show top projects' : 'Show every project'}
             </button>
           )}
+          {/* Cards that need the owner (text starts with owner_prefix), oldest first. */}
+          <div className="breakdown-waiting">
+            <h3>Waiting on {data.owner} <span className="breakdown-column-total">{data.waiting_on_owner.length}</span></h3>
+            <ul className="breakdown-list">
+              {data.waiting_on_owner.map(card => (
+                <li key={`${card.project_id}-${card.display_id}-${card.text}`} className="breakdown-row">
+                  <Link to={`/kanban/${card.project_id}`} className="breakdown-project">
+                    {card.display_id ? `#${card.display_id} ` : ''}{card.project}: {card.text.slice(data.owner_prefix.length).trimStart()}
+                  </Link>
+                  <span className="breakdown-count">{card.age_days}d</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </>
       )}
     </section>

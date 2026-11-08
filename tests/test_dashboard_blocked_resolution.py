@@ -48,13 +48,13 @@ def _blocked_view(db, task_id, monkeypatch):
     and added a minute to the suite.
     """
 
-    import dashboard.app as dashboard_app
+    import dashboard.routes.tasks as tasks_routes
 
-    monkeypatch.setattr(dashboard_app, "DatabaseManager", lambda *a, **k: db)
+    monkeypatch.setattr(tasks_routes, "DatabaseManager", lambda *a, **k: db)
     # status_filter must be passed explicitly: its default is a FastAPI
     # Query() marker that only the framework resolves.
     #
-    payload = dashboard_app.list_tasks(project_id="alpha", status_filter=None)
+    payload = tasks_routes.list_tasks(project_id="alpha", status_filter=None)
     rows = payload["tasks"] if isinstance(payload, dict) else payload
     # str(): the API stringifies Snowflake-scale ids on the wire (#7824);
     # task_id here is the raw int from the DatabaseManager layer.
@@ -119,7 +119,7 @@ def test_cross_project_blockers_are_resolved_once_per_request(board, monkeypatch
     that has hurt this dashboard before. Several cards referencing the same
     blocker must cost one lookup, not one each.
     """
-    import dashboard.app as dashboard_app
+    import dashboard.routes.tasks as tasks_routes
 
     board.add_project("beta", "Beta", "/tmp/beta", "active")
     outsider = board.add_task("blocker in another project", "beta")
@@ -136,9 +136,9 @@ def test_cross_project_blockers_are_resolved_once_per_request(board, monkeypatch
         return real_get_task(task_id)
 
     monkeypatch.setattr(board, "get_task", counting_get_task)
-    monkeypatch.setattr(dashboard_app, "DatabaseManager", lambda *a, **k: board)
+    monkeypatch.setattr(tasks_routes, "DatabaseManager", lambda *a, **k: board)
 
-    rows = dashboard_app.list_tasks(project_id="alpha", status_filter=None)
+    rows = tasks_routes.list_tasks(project_id="alpha", status_filter=None)
     rows = rows["tasks"] if isinstance(rows, dict) else rows
 
     blocked = [r for r in rows if r.get("blocked_by_ids")]

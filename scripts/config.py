@@ -140,32 +140,21 @@ DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 def local_config_path() -> Path:
     """The local config file: $PT_CONFIG, else ~/.config/project-tracker/config.toml.
 
-    A relative PT_CONFIG is relative to the directory pt was run from
-    ($PT_CALLER_CWD, which the pt launcher sets before it changes directory).
-    Never raises and reads nothing, so it is safe in messages and diagnostics.
-    A PT_CONFIG whose ~user can't be expanded comes back as written, and
-    local_config() reports it. Every failure to load the config is a
-    ValueError from local_config() or memory_integration() that names the file.
+    Only tests set PT_CONFIG, always to an absolute path, so that is the one form
+    accepted: local_config() refuses any other. Never raises and reads nothing,
+    so it is safe in messages and diagnostics. Every failure to load the config
+    is a ValueError from local_config() or memory_integration() that names the file.
     """
-    # governance: allow-silent SF003: PT_CONFIG is optional; empty means the default path on the next line
+    # governance: allow-silent SF003: PT_CONFIG is optional; empty means the default path
     override = os.environ.get("PT_CONFIG", "").strip()
-    if not override:
-        return Path.home() / ".config" / "project-tracker" / "config.toml"
-    try:
-        path = Path(override).expanduser()
-    except RuntimeError:  # governance: allow-silent SF002: an unknown ~user; local_config() raises for it
-        return Path(override)
-    if path.is_absolute():
-        return path
-    # governance: allow-silent SF003: PT_CALLER_CWD is set by the pt launcher; without it the process cwd is the caller's
-    return Path(os.environ.get("PT_CALLER_CWD") or os.getcwd()) / path
+    return Path(override) if override else Path.home() / ".config" / "project-tracker" / "config.toml"
 
 
 def local_config() -> dict:
     """The parsed local config file, or {} when there is none."""
     path = local_config_path()
-    if path.parts and path.parts[0].startswith("~"):
-        raise ValueError(f"PT_CONFIG={str(path)!r} can't be expanded: no such user")
+    if not path.is_absolute():
+        raise ValueError(f"PT_CONFIG={str(path)!r} must be an absolute path")
     try:
         raw = path.read_bytes()
     except FileNotFoundError:  # governance: allow-silent SF002: no config file is the documented "no integrations" state
@@ -404,3 +393,40 @@ def graph_settings(data: dict | None = None) -> tuple[frozenset[str], frozenset[
         raise ValueError(f"{path}: [graph] skip_dirs and ignore_projects must be lists of names "
                          "without surrounding spaces")
     return frozenset(lists[0]), frozenset(lists[1])
+
+
+def user_facing_projects(data: dict | None = None) -> frozenset[str]:
+    """[dashboard] user_facing (data, as for memory_integration): projects whose work reaches real users.
+
+    The owner keeps this list by hand; the dashboard's weekly split reads it on every
+    request, so editing the file is enough. Empty when unset. Invalid values raise.
+    """
+    path = local_config_path()
+    section = (local_config() if data is None else data).get("dashboard", {})
+    if not isinstance(section, dict) or not set(section) <= {"user_facing"}:
+        raise ValueError(f"{path}: [dashboard] may only set user_facing")
+    names = section.get("user_facing", [])
+    if not (isinstance(names, list) and all(isinstance(n, str) and n and n == n.strip() for n in names)):
+        raise ValueError(f"{path}: [dashboard] user_facing must be a list of project ids without surrounding spaces")
+    return frozenset(names)
+
+
+def owner_name(data: dict | None = None) -> str:
+    """[owner] name (data, as for memory_integration): the person the board waits on.
+
+    A card that needs them starts with owner_prefix(), their name in capitals and
+    a colon. "Owner" when unset. Invalid values raise.
+    """
+    path = local_config_path()
+    section = (local_config() if data is None else data).get("owner", {})
+    if not isinstance(section, dict) or not set(section) <= {"name"}:
+        raise ValueError(f"{path}: [owner] may only set name")
+    name = section.get("name", "Owner")
+    if not (isinstance(name, str) and name and name == name.strip() and ":" not in name):
+        raise ValueError(f"{path}: [owner] name must be a non-empty name without surrounding spaces or a colon")
+    return name
+
+
+def owner_prefix(name: str) -> str:
+    """The text a card waiting on the owner starts with: "OWNER:" for "Owner"."""
+    return f"{name.upper()}:"

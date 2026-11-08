@@ -15,9 +15,6 @@ Files live in ``scripts/db/migrations/`` and match ``NNN_name.py`` where
   Called inside an already-open transaction; must **not** issue
   ``BEGIN``, ``COMMIT``, or ``ROLLBACK``.
 
-Older modules also carry a ``CRR_TABLES`` frozenset left over from the
-cr-sqlite era (removed by migration 018). The runner ignores it.
-
 Files under ``migrations/`` whose basename doesn't match ``NNN_name.py``
 (``__init__.py``, dotfiles, editor backups) are ignored silently. Files
 that match the naming pattern but lack ``up()`` emit a stderr warning on
@@ -25,6 +22,10 @@ discovery and are skipped. They will never be applied.
 
 A fresh database does not replay these: it is created from schema.sql and
 marked for every migration that file contains (see schema.create_database).
+
+Only migrations newer than the cr-sqlite era are kept. A database that does
+not record the one just below the oldest file here (a restored pre-October
+2026 backup) is refused with the release that can still migrate it.
 """
 
 from __future__ import annotations
@@ -41,6 +42,10 @@ from typing import Callable, Iterable, cast
 
 
 MIGRATION_FILENAME_RE = re.compile(r"^(\d{3})_([a-z0-9_]+)\.py$")
+
+# The last commit that still carries migrations 002-018, for databases older
+# than the oldest migration kept here.
+OLD_MIGRATIONS_RELEASE = "d01e79a"
 
 
 class MigrationError(RuntimeError):
@@ -210,6 +215,13 @@ def apply_all(
     the failure and re-runs.
     """
     migrations = discover_migrations(migrations_dir)
+    floor = migrations[0].version - 1 if migrations else 0
+    if floor and max(applied_versions(conn), default=0) < floor:
+        raise MigrationError(
+            f"this database does not record migration {floor:03d}, and this release only "
+            f"migrates databases from there on. Migrate it with project-tracker at {OLD_MIGRATIONS_RELEASE} "
+            f"(git checkout {OLD_MIGRATIONS_RELEASE} && pt db migrate), then come back."
+        )
     pending = unapplied_migrations(conn, migrations)
     for migration in pending:
         apply_migration(conn, migration)

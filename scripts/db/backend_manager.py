@@ -20,7 +20,6 @@ from typing import Any, Dict, Generator, List, Optional, Tuple
 from .schema import (
     create_database,
     get_db_path,
-    has_legacy_crsql_triggers,
     mark_if_holding_data,
 )
 from .pt_id import next_id as pt_next_id
@@ -79,16 +78,8 @@ class DatabaseManager:
         if db_key not in _local_schema_ensured_paths:
             with _LOCAL_SCHEMA_LOCK:
                 if db_key not in _local_schema_ensured_paths:
-                    # A pre-018 database still has cr-sqlite triggers that no
-                    # connection can run. Leave it untouched (schema DDL on a
-                    # CRR table would desync its triggers) and do not mark the
-                    # path ensured: reads and `pt db migrate` keep working, and
-                    # the next manager re-checks, so ensuring resumes once 018
-                    # has run. Writes fail until then; pt's pending-migrations
-                    # notice names the fix.
-                    if not has_legacy_crsql_triggers(self.db_path):
-                        create_database(self.db_path)
-                        _local_schema_ensured_paths.add(db_key)
+                    create_database(self.db_path)
+                    _local_schema_ensured_paths.add(db_key)
 
     @contextmanager
     def _get_conn(self) -> Generator[Any, None, None]:
@@ -1096,6 +1087,39 @@ class DatabaseManager:
                 "SELECT id FROM tasks WHERE id = ?", (token,)
             ).fetchone()
             return row[0] if row else None
+
+    def get_done_since(self, since: str) -> List[Dict[str, Any]]:
+        """(project_id, completed_at) of every card marked Done at or after ``since``, archived ones included."""
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT project_id, completed_at FROM tasks"
+                " WHERE status = 'Done' AND completed_at >= ?",
+                (since,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_owner_cards(self, statuses: List[str], prefix: str,
+                        include_archived: bool = False) -> List[Dict[str, Any]]:
+        """Open cards waiting on the owner, oldest first.
+
+        The board's rule: a card that needs the owner starts with ``prefix``
+        (config.owner_prefix). Same filter as ``pt tasks`` (not archived, no
+        proposals), so the counts agree. ``include_archived`` adds the Done cards
+        trimmed off the board, for history that must see every such card ever opened.
+        """
+        placeholders = ",".join("?" for _ in statuses)
+        archived = "" if include_archived else " AND t.archived_at IS NULL"
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT t.project_id, t.text, t.status, t.created_at, d.display_id"
+                " FROM tasks t LEFT JOIN task_display_ids d ON d.task_id = t.id"
+                f" WHERE t.status IN ({placeholders}){archived}"
+                " AND substr(t.text, 1, ?) = ?"
+                " AND COALESCE(t.task_type, '') != 'proposal'"
+                " ORDER BY t.created_at",
+                [*statuses, len(prefix), prefix],
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def get_task_display_id(self, task_id: int) -> Optional[int]:
         """Return the display_id for a given Snowflake task_id, or None."""

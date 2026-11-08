@@ -115,8 +115,7 @@ def test_get_info_collapses_duplicate_scope_key_rows(tmp_path: Path):
     }]
 
 
-def test_delete_project_cleans_children_without_fk_cascade(tmp_path: Path):
-    monkeypatch = pytest.MonkeyPatch()
+def test_delete_project_cleans_children_without_fk_cascade(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("HOME", str(tmp_path))
     db_path, db, cal = _setup_db(tmp_path)
     db.add_project("proj", "Proj", "/tmp/proj", "active")
@@ -156,7 +155,6 @@ def test_delete_project_cleans_children_without_fk_cascade(tmp_path: Path):
         assert _count(conn, "cron_jobs") == 0
         assert conn.execute("SELECT project_id FROM calendar_events WHERE id = ?", (event_id,)).fetchone()[0] is None
     assert not stored_file.exists()
-    monkeypatch.undo()
 
 
 def test_delete_task_cleans_descendants_and_children(monkeypatch, tmp_path: Path):

@@ -32,7 +32,7 @@ def _setup_db(tmp_path: Path) -> tuple[Path, DatabaseManager]:
 def _invoke_cli(db_path: Path, args: list) -> object:
     """Invoke info_group CLI with a patched DatabaseManager pointing to test DB."""
     runner = CliRunner()
-    with patch("pt.DatabaseManager", lambda: DatabaseManager(db_path)):
+    with patch("commands.info.DatabaseManager", lambda: DatabaseManager(db_path)):
         return runner.invoke(info_group, args, catch_exceptions=False)
 
 

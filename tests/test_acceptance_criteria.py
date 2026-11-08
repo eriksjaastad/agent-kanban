@@ -160,7 +160,7 @@ class TestCliTasksCreate:
     def test_rejects_without_description(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         db_path, db, project_id = _setup_db(tmp_path)
         monkeypatch.setenv("PT_DB_PATH", str(db_path))
-        monkeypatch.setattr("pt._detect_project_from_cwd", lambda db: None)
+        monkeypatch.setattr("commands.tasks._detect_project_from_cwd", lambda db: None)
 
         runner = CliRunner()
         result = runner.invoke(tasks_group, ["create", "New feature", "-p", project_id])
@@ -172,7 +172,7 @@ class TestCliTasksCreate:
     def test_accepts_with_description(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         db_path, db, project_id = _setup_db(tmp_path)
         monkeypatch.setenv("PT_DB_PATH", str(db_path))
-        monkeypatch.setattr("pt._detect_project_from_cwd", lambda db: None)
+        monkeypatch.setattr("commands.tasks._detect_project_from_cwd", lambda db: None)
 
         runner = CliRunner()
         result = runner.invoke(
@@ -187,7 +187,7 @@ class TestCliTasksCreate:
     def test_proposal_not_exempt(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         db_path, db, project_id = _setup_db(tmp_path)
         monkeypatch.setenv("PT_DB_PATH", str(db_path))
-        monkeypatch.setattr("pt._detect_project_from_cwd", lambda db: None)
+        monkeypatch.setattr("commands.tasks._detect_project_from_cwd", lambda db: None)
 
         runner = CliRunner()
         result = runner.invoke(

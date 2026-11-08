@@ -90,7 +90,8 @@ def test_thread_start_failure_is_retryable():
 
 
 def test_navigation_responds_while_github_collects():
-    from dashboard.app import api_github, api_navigation
+    from dashboard.app import api_navigation
+    from dashboard.routes.github import api_github
 
     cache = GitHubCache()
     release = threading.Event()
@@ -106,7 +107,7 @@ def test_navigation_responds_while_github_collects():
         assert navigation
 
     try:
-        with patch("dashboard.app._github_cache", cache), patch("dashboard.app._fetch_github_data", slow):
+        with patch("dashboard.routes.github._github_cache", cache), patch("dashboard.routes.github._fetch_github_data", slow):
             asyncio.run(asyncio.wait_for(requests(), timeout=0.5))
     finally:
         release.set()

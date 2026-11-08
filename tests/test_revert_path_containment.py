@@ -26,7 +26,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 import pt as pt_cli  # noqa: E402
-from pt import PathEscapesRepoError, _contained_path, _revert_paths  # noqa: E402
+from commands.migration import PathEscapesRepoError, _contained_path, _revert_paths  # noqa: E402
+from commands import handoff as handoff_commands  # noqa: E402
 
 
 @pytest.fixture
@@ -176,14 +177,14 @@ def test_tracked_paths_are_screened_too(repo_and_sibling) -> None:
 )
 def test_handoff_files_rejects_unsafe_paths(bad_path: str) -> None:
     """Bad paths must never get written down in the first place."""
-    with pytest.raises(pt_cli.PtJsonError):
-        pt_cli._validate_files_array(
+    with pytest.raises(handoff_commands.PtJsonError):
+        handoff_commands._validate_files_array(
             [{"path": bad_path, "classification": "untracked"}]
         )
 
 
 def test_handoff_files_still_accepts_normal_paths() -> None:
-    pt_cli._validate_files_array(
+    handoff_commands._validate_files_array(
         [
             {"path": "docs/note.md", "classification": "untracked"},
             {"path": "scripts/thing.py", "classification": "dirty"},

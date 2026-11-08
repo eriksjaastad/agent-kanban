@@ -1,6 +1,6 @@
 -- Maintained by scripts/db/schema_dump.py (make schema). Never edit by hand: add a migration.
--- Migrations: through 024
--- Body sha256: 76cf8c428d8d9db7d95f2ddf2f283f42b729841e187b05b2a067c8fe4b3c01ea
+-- Migrations: through 026
+-- Body sha256: 2a8ef2da8cee0f678dbbbe99e15bf6af2d46df40fca238e8eb6c1b5127e2c4b8
 
 CREATE TABLE _delete_permissions (
             id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -46,7 +46,7 @@ CREATE TABLE "calendar_events" (
             metadata              TEXT    DEFAULT '{}',
             created_at            TEXT    NOT NULL DEFAULT '',
             updated_at            TEXT    NOT NULL DEFAULT ''
-        );
+        , end_time TEXT);
 
 CREATE TABLE codebase_size_snapshots (
             id            INTEGER PRIMARY KEY NOT NULL,
@@ -254,6 +254,14 @@ CREATE TABLE "service_dependencies" (
             cost_monthly REAL
         );
 
+CREATE TABLE site_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            site TEXT NOT NULL,
+            ran_at TEXT NOT NULL,
+            exit_code INTEGER NOT NULL,
+            sources TEXT
+        );
+
 CREATE TABLE task_attachments (
         id           INTEGER PRIMARY KEY NOT NULL,
         task_id      INTEGER NOT NULL DEFAULT 0,
@@ -383,6 +391,8 @@ CREATE INDEX idx_projects_name ON projects(name);
 CREATE INDEX idx_projects_status ON projects(status);
 
 CREATE INDEX idx_service_deps_project ON service_dependencies(project_id);
+
+CREATE INDEX idx_site_stats_site_time ON site_stats(site, ran_at DESC);
 
 CREATE INDEX idx_task_notes_history_task_timestamp
         ON task_notes_history(task_id, timestamp);

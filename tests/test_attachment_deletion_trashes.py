@@ -45,7 +45,7 @@ def test_bulk_cleanup_trashes_files_rather_than_unlinking(tmp_path, monkeypatch)
         lambda task_id, create=True: attach_dir,
     )
     monkeypatch.setattr(
-        "dashboard.app.attachments_dir",
+        "dashboard.routes.tasks.attachments_dir",
         lambda task_id, create=True: attach_dir,
         raising=False,
     )
@@ -78,7 +78,7 @@ def test_bulk_cleanup_survives_a_trash_failure(tmp_path, monkeypatch):
         lambda task_id, create=True: attach_dir,
     )
     monkeypatch.setattr(
-        "dashboard.app.attachments_dir",
+        "dashboard.routes.tasks.attachments_dir",
         lambda task_id, create=True: attach_dir,
         raising=False,
     )
@@ -117,7 +117,7 @@ def test_delete_endpoint_trashes_rather_than_unlinking(tmp_path, monkeypatch):
         lambda task_id, create=True: attach_dir,
     )
     monkeypatch.setattr(
-        "dashboard.app.attachments_dir",
+        "dashboard.routes.tasks.attachments_dir",
         lambda task_id, create=True: attach_dir,
         raising=False,
     )
@@ -153,7 +153,7 @@ def test_delete_endpoint_reports_an_orphan_instead_of_500ing(tmp_path, monkeypat
         lambda task_id, create=True: attach_dir,
     )
     monkeypatch.setattr(
-        "dashboard.app.attachments_dir",
+        "dashboard.routes.tasks.attachments_dir",
         lambda task_id, create=True: attach_dir,
         raising=False,
     )

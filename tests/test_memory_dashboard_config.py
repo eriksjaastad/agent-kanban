@@ -16,6 +16,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import dashboard.app as dashboard_app
+import dashboard.routes.memory as memory_routes  # noqa: E402
 
 STATIC = Path(__file__).resolve().parent.parent / "dashboard" / "static"
 
@@ -37,7 +38,7 @@ def make_brain(root: Path, contents: str) -> Path:
 
 @pytest.fixture
 def client(monkeypatch):
-    monkeypatch.setitem(dashboard_app._graph_cache, "data", None)
+    monkeypatch.setitem(memory_routes._graph_cache, "data", None)
     return TestClient(dashboard_app.app)
 
 
@@ -47,6 +48,7 @@ ENDPOINTS = [
     ("/api/memory-graph", 404, lambda b: "not configured" in b["error"]),
     ("/api/memory/types", 200, lambda b: b["types"] == ["observation", "decision", "idea", "question"]),
     ("/api/memory/heatmap", 200, lambda b: b["rows"] == [] and "not configured" in b["error"]),
+    ("/api/thoughts", 200, lambda b: b["thoughts"] == [] and b["total"] == 0 and "not configured" in b["error"]),
     ("/api/memory/build-status", 200, lambda b: b["state"] == "unknown" and b["schedule"] is None),
     ("/api/tool-stats?tool=WebSearch", 503, lambda b: "not configured" in b["detail"]),
     ("/api/bash-stats", 503, lambda b: "not configured" in b["detail"]),
@@ -101,10 +103,12 @@ const vm = require('vm');
 const fs = require('fs');
 const elements = {{}};
 const element = () => ({{ innerHTML: '', textContent: '', style: {{}},
-    replaceChildren(...kids) {{ this.children = kids; this.innerHTML = ''; }} }});
+    replaceChildren(...kids) {{ this.children = kids; this.innerHTML = ''; }},
+    appendChild(kid) {{ (this.children = this.children || []).push(kid); }} }});
 const context = {{
-  console, JSON, Date, isNaN, Math,
+  console, JSON, Date, isNaN, Math, URLSearchParams,
   document: {{
+    addEventListener() {{}},
     getElementById: (id) => elements[id] || (elements[id] = element()),
     createElement: () => element(),
   }},

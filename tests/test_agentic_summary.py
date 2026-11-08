@@ -10,6 +10,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 import dashboard.app as dashboard_app
+import dashboard.routes.agentic as agentic_routes  # noqa: E402
 from fastapi.testclient import TestClient
 
 from db.backend_manager import DatabaseManager as BackendDatabaseManager
@@ -76,7 +77,7 @@ def _patch_markers(monkeypatch: pytest.MonkeyPatch, dashboard_app_module, conten
 def test_agentic_summary_aggregates_rates_series_and_markers(local_backend, monkeypatch: pytest.MonkeyPatch):
     db = local_backend
     task_ids = _setup_db(db)
-    _freeze_now(monkeypatch, dashboard_app, datetime(2026, 3, 10, 12, 0, 0))
+    _freeze_now(monkeypatch, agentic_routes, datetime(2026, 3, 10, 12, 0, 0))
     _patch_markers(
         monkeypatch,
         dashboard_app,
@@ -119,7 +120,7 @@ def test_agentic_summary_aggregates_rates_series_and_markers(local_backend, monk
 def test_agentic_summary_filters_by_project(local_backend, monkeypatch: pytest.MonkeyPatch):
     db = local_backend
     task_ids = _setup_db(db)
-    _freeze_now(monkeypatch, dashboard_app, datetime(2026, 3, 10, 12, 0, 0))
+    _freeze_now(monkeypatch, agentic_routes, datetime(2026, 3, 10, 12, 0, 0))
     _patch_markers(monkeypatch, dashboard_app, None)
 
     _insert_history(db, task_ids["project-tracker"], "project-tracker", [
@@ -143,7 +144,7 @@ def test_agentic_summary_filters_by_project(local_backend, monkeypatch: pytest.M
 
 def test_agentic_summary_handles_invalid_days_and_malformed_markers(local_backend, monkeypatch: pytest.MonkeyPatch):
     _setup_db(local_backend)
-    _freeze_now(monkeypatch, dashboard_app, datetime(2026, 3, 10, 12, 0, 0))
+    _freeze_now(monkeypatch, agentic_routes, datetime(2026, 3, 10, 12, 0, 0))
     _patch_markers(monkeypatch, dashboard_app, "{not-json")
 
     response = TestClient(dashboard_app.app).get("/api/agentic/summary?days=0")
@@ -168,10 +169,10 @@ def test_agentic_summary_reports_markers_error_for_non_utf8_markers_file(
     local_backend, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
     _setup_db(local_backend)
-    _freeze_now(monkeypatch, dashboard_app, datetime(2026, 3, 10, 12, 0, 0))
+    _freeze_now(monkeypatch, agentic_routes, datetime(2026, 3, 10, 12, 0, 0))
     markers_file = tmp_path / "agentic_markers.json"
     markers_file.write_bytes(b"\xff\xfe[")
-    monkeypatch.setattr(dashboard_app, "MARKERS_PATH", markers_file)
+    monkeypatch.setattr(agentic_routes, "MARKERS_PATH", markers_file)
 
     response = TestClient(dashboard_app.app).get("/api/agentic/summary?days=3")
 

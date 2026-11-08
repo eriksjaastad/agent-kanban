@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 from pt import cli  # noqa: E402
+from commands import common  # noqa: E402
 from dashboard.app import app  # noqa: E402
 
 migration = importlib.import_module("db.migrations.024_add_checkout_task_id")
@@ -204,7 +205,7 @@ def _printed_command(project_id: str, checkout_id: int) -> list[str]:
 
     due = {"project_id": project_id, "machine": "mini", "holder": "H", "task_id": 1, "reason": "r", "id": checkout_id}
     with pt.console.capture() as captured:
-        pt._print_checkin_reminders(None, [due])
+        common._print_checkin_reminders(None, [due])
     return shlex.split(captured.get().split("Run: ", 1)[1])
 
 

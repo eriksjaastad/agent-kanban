@@ -16,6 +16,9 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 import pt  # noqa: E402
+from commands import message as message_commands  # noqa: E402
+from commands import worktrees  # noqa: E402
+from commands import migration as migration_commands  # noqa: E402
 
 
 @pytest.mark.parametrize(
@@ -34,7 +37,7 @@ def test_worktree_branch_failure_raises_instead_of_orphaned(monkeypatch, tmp_pat
 
     monkeypatch.setattr(pt.subprocess, "run", failing_run)
     with pytest.raises(click.ClickException):
-        pt._worktree_branch(tmp_path, tmp_path / "wt")
+        worktrees._worktree_branch(tmp_path, tmp_path / "wt")
 
 
 def test_porcelain_baseline_failure_raises_instead_of_empty(monkeypatch, tmp_path):
@@ -44,10 +47,10 @@ def test_porcelain_baseline_failure_raises_instead_of_empty(monkeypatch, tmp_pat
     def failing_git(*_args, **_kwargs):
         raise subprocess.TimeoutExpired(cmd="git status", timeout=10)
 
-    monkeypatch.setattr(pt, "_run_git", failing_git)
-    with pytest.raises(pt.PtJsonError) as excinfo:
-        pt._git_porcelain_baseline(tmp_path)
-    assert excinfo.value.exit_code == pt.EXIT_QUERY_FAILURE
+    monkeypatch.setattr(migration_commands, "_run_git", failing_git)
+    with pytest.raises(migration_commands.PtJsonError) as excinfo:
+        migration_commands._git_porcelain_baseline(tmp_path)
+    assert excinfo.value.exit_code == migration_commands.EXIT_QUERY_FAILURE
 
 
 def test_migration_start_reports_git_failure_and_writes_no_state(monkeypatch, tmp_path):
@@ -58,11 +61,11 @@ def test_migration_start_reports_git_failure_and_writes_no_state(monkeypatch, tm
             raise subprocess.TimeoutExpired(cmd="git status", timeout=timeout)
         return "", 128
 
-    monkeypatch.setattr(pt, "_run_git", failing_git)
+    monkeypatch.setattr(migration_commands, "_run_git", failing_git)
     monkeypatch.setenv("PT_MIGRATION_DIR", str(tmp_path / "migrations"))
     monkeypatch.setenv("PT_CALLER_CWD", str(tmp_path))
     result = CliRunner().invoke(pt.cli, ["migration", "start", "sweep-test", "--json"])
-    assert result.exit_code == pt.EXIT_QUERY_FAILURE, result.output
+    assert result.exit_code == migration_commands.EXIT_QUERY_FAILURE, result.output
     assert '"query_failure"' in result.output
     assert not (tmp_path / "migrations" / "sweep-test.json").exists()
 
@@ -74,8 +77,8 @@ def test_known_chat_addresses_warns_when_unverifiable(monkeypatch, capsys):
     def broken_db():
         raise RuntimeError("db down")
 
-    monkeypatch.setattr(pt, "DatabaseManager", broken_db)
-    assert pt._known_chat_addresses() is None
+    monkeypatch.setattr(message_commands, "DatabaseManager", broken_db)
+    assert message_commands._known_chat_addresses() is None
     assert "could not verify the recipient address" in capsys.readouterr().err
 
 
@@ -88,4 +91,4 @@ def test_unresolvable_caller_dir_is_not_replaced_by_sender(monkeypatch, tmp_path
     monkeypatch.setenv("PT_CALLER_CWD", str(tmp_path))
     monkeypatch.setattr(Path, "resolve", broken_resolve)
     with pytest.raises(OSError):
-        pt._resolve_self_address({"sender": "claude-architect"})
+        message_commands._resolve_self_address({"sender": "claude-architect"})

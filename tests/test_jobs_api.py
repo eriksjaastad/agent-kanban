@@ -156,7 +156,7 @@ def _queued_prompt(client, job, monkeypatch):
     from discovery.agent_registry import CommandResult
 
     calls = []
-    monkeypatch.setattr("dashboard.app.run_agent_command", lambda *call: calls.append(call) or CommandResult(
+    monkeypatch.setattr("dashboard.routes.jobs.run_agent_command", lambda *call: calls.append(call) or CommandResult(
         success=True, output="", error="", return_code=0, duration_ms=1, command=""))
     response = client.post(f"/api/jobs/{job['id']}/agent-prompt")
     return response, calls and shlex.split(calls[0][2])[1]
@@ -220,7 +220,7 @@ def test_agent_prompt_endpoint_composes_correct_prompt(db, tmp_path, monkeypatch
             success=True, output="Message sent", error="", return_code=0, duration_ms=100, command="pt message send"
         )
     
-    monkeypatch.setattr("dashboard.app.run_agent_command", mock_run_agent)
+    monkeypatch.setattr("dashboard.routes.jobs.run_agent_command", mock_run_agent)
     
     response = client.post(f"/api/jobs/{job['id']}/agent-prompt")
     assert response.status_code == 200, response.text
@@ -267,7 +267,7 @@ def test_agent_prompt_handles_special_chars_in_company_title(db, monkeypatch):
             success=True, output="", error="", return_code=0, duration_ms=10, command=""
         )
     
-    monkeypatch.setattr("dashboard.app.run_agent_command", mock_run_agent)
+    monkeypatch.setattr("dashboard.routes.jobs.run_agent_command", mock_run_agent)
     
     response = client.post(f"/api/jobs/{job['id']}/agent-prompt")
     assert response.status_code == 200, response.text
@@ -318,7 +318,7 @@ def test_agent_prompt_handles_command_failure(db, monkeypatch):
             success=False, output="", error="Agent not available", return_code=1, duration_ms=10, command=""
         )
     
-    monkeypatch.setattr("dashboard.app.run_agent_command", mock_run_agent)
+    monkeypatch.setattr("dashboard.routes.jobs.run_agent_command", mock_run_agent)
     
     response = client.post(f"/api/jobs/{job['id']}/agent-prompt")
     assert response.status_code == 500

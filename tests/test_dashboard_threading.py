@@ -18,6 +18,9 @@ import uvicorn
 from fastapi.testclient import TestClient
 
 import dashboard.app as dashboard_app
+import dashboard.routes.calendar as calendar_routes  # noqa: E402
+import dashboard.routes.tasks as tasks_routes  # noqa: E402
+import dashboard.routes.agentic as agentic_routes  # noqa: E402
 
 SLOW_SECONDS = 1.5
 HEALTH_BUDGET_SECONDS = 0.75
@@ -113,7 +116,7 @@ def test_unexpected_error_shapes_are_unchanged(monkeypatch):
     def boom(*_a, **_k):
         raise RuntimeError("kaboom")
 
-    monkeypatch.setattr(dashboard_app, "_get_cal_manager", boom)
+    monkeypatch.setattr(calendar_routes, "_get_cal_manager", boom)
     client = TestClient(dashboard_app.app, raise_server_exceptions=False)
 
     response = client.get("/api/calendar/events")
@@ -166,8 +169,8 @@ def test_write_requests_never_overlap_even_across_endpoints(live_server, monkeyp
 
     monkeypatch.setattr(dashboard_app, "discover_projects", tracked([]))
     monkeypatch.setattr(dashboard_app, "rebuild_project_graph", lambda: None)
-    monkeypatch.setattr(dashboard_app, "MARKERS_PATH", tmp_path / "markers.json")
-    monkeypatch.setattr(dashboard_app, "_load_markers", tracked(list))
+    monkeypatch.setattr(agentic_routes, "MARKERS_PATH", tmp_path / "markers.json")
+    monkeypatch.setattr(agentic_routes, "_load_markers", tracked(list))
 
     results = _run_concurrently(
         [lambda: httpx.post(f"{live_server}/api/refresh", timeout=20)] * 2
@@ -190,15 +193,15 @@ def test_write_requests_never_overlap_even_across_endpoints(live_server, monkeyp
 def test_concurrent_marker_creates_are_not_lost(live_server, monkeypatch, tmp_path):
     """Marker writes are load-modify-save on one JSON file; concurrent creates
     through the server must all persist."""
-    monkeypatch.setattr(dashboard_app, "MARKERS_PATH", tmp_path / "markers.json")
-    real_load = dashboard_app._load_markers
+    monkeypatch.setattr(agentic_routes, "MARKERS_PATH", tmp_path / "markers.json")
+    real_load = agentic_routes._load_markers
 
     def slow_load():
         markers = real_load()
         time.sleep(0.05)  # widen the read-modify-write window
         return markers
 
-    monkeypatch.setattr(dashboard_app, "_load_markers", slow_load)
+    monkeypatch.setattr(agentic_routes, "_load_markers", slow_load)
     results = _run_concurrently(
         [
             lambda i=i: httpx.post(
@@ -242,7 +245,7 @@ def test_background_graph_rebuild_does_not_hold_the_write_lock(live_server, monk
     rebuild must not stall other writes (main ran it in parallel)."""
     monkeypatch.setattr(dashboard_app, "discover_projects", lambda: [])
     monkeypatch.setattr(dashboard_app, "rebuild_project_graph", _slow(None))
-    monkeypatch.setattr(dashboard_app, "MARKERS_PATH", tmp_path / "markers.json")
+    monkeypatch.setattr(agentic_routes, "MARKERS_PATH", tmp_path / "markers.json")
 
     assert httpx.post(f"{live_server}/api/refresh", timeout=10).status_code == 200
     started = time.monotonic()
@@ -259,7 +262,7 @@ def test_background_graph_rebuild_does_not_hold_the_write_lock(live_server, monk
 def test_a_stalled_upload_body_does_not_block_other_writes(live_server, monkeypatch, tmp_path):
     """The body is parsed before the handler runs, so a client that stops
     sending mid-upload holds no lock."""
-    monkeypatch.setattr(dashboard_app, "MARKERS_PATH", tmp_path / "markers.json")
+    monkeypatch.setattr(agentic_routes, "MARKERS_PATH", tmp_path / "markers.json")
     host, port = live_server.removeprefix("http://").split(":")
     stalled = socket.create_connection((host, int(port)))
     try:
@@ -295,8 +298,8 @@ def test_failed_attachment_insert_leaves_no_file(monkeypatch, tmp_path):
 
     attach_dir = tmp_path / "attachments"
     attach_dir.mkdir()
-    monkeypatch.setattr(dashboard_app, "attachments_dir", lambda _task_id: attach_dir)
-    monkeypatch.setattr(dashboard_app, "DatabaseManager", FailingInsertDB)
+    monkeypatch.setattr(tasks_routes, "attachments_dir", lambda _task_id: attach_dir)
+    monkeypatch.setattr(tasks_routes, "DatabaseManager", FailingInsertDB)
     client = TestClient(dashboard_app.app, raise_server_exceptions=False)
     response = client.post(
         "/api/tasks/7/attachments", files={"file": ("a.txt", b"hello", "text/plain")}
@@ -310,7 +313,7 @@ def test_a_burst_of_queued_writes_does_not_starve_reads(live_server, monkeypatch
     threadpool: 45 of them behind a slow refresh leave /api/health answering."""
     monkeypatch.setattr(dashboard_app, "discover_projects", _slow([]))
     monkeypatch.setattr(dashboard_app, "rebuild_project_graph", lambda: None)
-    monkeypatch.setattr(dashboard_app, "MARKERS_PATH", tmp_path / "markers.json")
+    monkeypatch.setattr(agentic_routes, "MARKERS_PATH", tmp_path / "markers.json")
 
     writes = [lambda: httpx.post(f"{live_server}/api/refresh", timeout=30)] + [
         lambda i=i: httpx.post(

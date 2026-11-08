@@ -10,18 +10,6 @@ from types import SimpleNamespace
 from .backend_manager import DatabaseManager as BackendDatabaseManager
 from .schema import mark_if_holding_data
 
-# Migration 018 removes cr-sqlite; see _migrations_apply.
-_CR_SQLITE_CLEANUP_VERSION = 18
-
-
-def _crsql_objects_remain(conn: sqlite3.Connection) -> bool:
-    """True while any cr-sqlite trigger or table is left in the database."""
-    return conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type IN ('table', 'trigger') "
-        "AND (name LIKE '%\\_\\_crsql\\_%' ESCAPE '\\' OR name LIKE 'crsql\\_%' ESCAPE '\\')"
-    ).fetchone() is not None
-
-
 class ProjectTrackerOps(BackendDatabaseManager):
     """Operations that span tables or need a recovery snapshot, on top of the SQL core."""
 
@@ -181,7 +169,7 @@ class ProjectTrackerOps(BackendDatabaseManager):
         return self._migrations_apply()
 
     def _migrations_apply(self) -> dict:
-        from .migration_runner import MigrationError, apply_all, discover_migrations
+        from .migration_runner import MigrationError, apply_all
 
         directory = self._migrations_dir()
         if not directory.is_dir():
@@ -189,30 +177,6 @@ class ProjectTrackerOps(BackendDatabaseManager):
 
         conn = sqlite3.connect(self.db_path, isolation_level=None)
         try:
-            # A restored pre-018 backup still carries cr-sqlite triggers, which
-            # break every row write an older pending migration makes. Run 018's
-            # cleanup first, as one transaction: the DB ends up either untouched
-            # or fully cr-sqlite-free with its machine id kept, never between.
-            # 018 is idempotent, so its turn in the normal order is a no-op that
-            # records it. This also clears anything old code recreated later.
-            if _crsql_objects_remain(conn):
-                cleanup = next(
-                    (m for m in discover_migrations(directory, verbose=False)
-                     if m.version == _CR_SQLITE_CLEANUP_VERSION),
-                    None,
-                )
-                if cleanup is None:
-                    raise FileNotFoundError(
-                        f"migration {_CR_SQLITE_CLEANUP_VERSION:03d} is missing from {directory}"
-                    )
-                conn.execute("BEGIN")
-                try:
-                    cleanup.up(conn)
-                    conn.execute("COMMIT")
-                except BaseException:
-                    if conn.in_transaction:  # SQLite may have rolled back already
-                        conn.execute("ROLLBACK")
-                    raise
             try:
                 applied = apply_all(conn, directory)
             except MigrationError as err:
@@ -528,6 +492,68 @@ class ProjectTrackerOps(BackendDatabaseManager):
         finally:
             conn.close()
 
+    def loop_runs_since(self, since_iso: str) -> list:
+        """Recorded runs started at or after ``since_iso`` (an ISO time with offset), oldest first."""
+        conn = self._tracker_conn()
+        try:
+            rows = conn.execute(
+                "SELECT loop_name, started_at, status FROM loop_executions WHERE started_at >= ? ORDER BY started_at",
+                (since_iso,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+    def site_stats_recorded(self, site: str, ran_at: str, exit_code: int, sources: str | None) -> None:
+        """Store one site's collector run (#8868); sources is JSON or None."""
+        conn = self._tracker_conn()
+        try:
+            conn.execute(
+                "INSERT INTO site_stats (site, ran_at, exit_code, sources) VALUES (?, ?, ?, ?)",
+                (site, ran_at, exit_code, sources),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def site_stats_since(self, since_iso: str) -> list:
+        """Collector runs at or after ``since_iso``, oldest first."""
+        conn = self._tracker_conn()
+        try:
+            rows = conn.execute(
+                "SELECT site, ran_at, exit_code, sources FROM site_stats WHERE ran_at >= ? ORDER BY ran_at",
+                (since_iso,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+    def loop_run_started(self, loop_name: str, started_at: str) -> int:
+        """Record a run as it starts; returns the row id for loop_run_finished."""
+        conn = self._tracker_conn()
+        try:
+            cursor = conn.execute(
+                "INSERT INTO loop_executions (loop_name, started_at, status) VALUES (?, ?, 'running')",
+                (loop_name, started_at),
+            )
+            conn.commit()
+            return int(cursor.lastrowid)
+        finally:
+            conn.close()
+
+    def loop_run_finished(self, run_id: int, completed_at: str, exit_code: int) -> None:
+        """Close a run: success on exit 0, else failed with the exit code as its error."""
+        conn = self._tracker_conn()
+        try:
+            conn.execute(
+                "UPDATE loop_executions SET completed_at = ?, status = ?, error_message = ? WHERE id = ?",
+                (completed_at, "success" if exit_code == 0 else "failed",
+                 None if exit_code == 0 else f"exit {exit_code}", run_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
     def task_history_daily(self, start_iso: str, project_id: str | None = None) -> list:
         """Daily review-transition counts from task_history, oldest first.
 
@@ -575,10 +601,10 @@ class ProjectTrackerOps(BackendDatabaseManager):
         Pruning old backups is a separate step (backup_prune), so a failure
         there can never undo or hide a snapshot that succeeded.
 
-        Replaces `scripts/backup-db.sh`, which shelled out to the `sqlite3`
-        binary and built its dot-command by interpolating an environment
-        variable into a single-quoted string — so a backup path containing a
-        quote broke out of the command. There is no shell here.
+        `scripts/backup-db.sh` used to shell out to the `sqlite3` binary with an
+        environment variable interpolated into a single-quoted dot-command, so a
+        backup path containing a quote broke out of it. It now calls this; there
+        is no shell here.
         """
         stamp = time.strftime("%Y%m%d_%H%M%S")
         primary = self.create_recovery_snapshot(label=f"tracker_{stamp}")

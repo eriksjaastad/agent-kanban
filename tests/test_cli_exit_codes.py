@@ -5,6 +5,7 @@ Found by the #8093 survey: transitions printed "Failed ..." / "not found" /
 example the state machine's "Cannot move from To Do to Done") as success.
 """
 
+import shutil
 import sys
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from click.testing import CliRunner
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 import pt  # noqa: E402
+from commands import memory as memory_commands  # noqa: E402
 from db.manager import DatabaseManager  # noqa: E402
 from db.schema import create_database  # noqa: E402
 from pt import tasks_group  # noqa: E402
@@ -110,7 +112,7 @@ def test_run_brain_passes_brain_py_exit_code_on(monkeypatch, tmp_path: Path, ret
     config = tmp_path / "config.toml"
     config.write_text(f'[memory]\nroot = "{tmp_path}"\n')
     monkeypatch.setenv("PT_CONFIG", str(config))
-    monkeypatch.setattr(pt.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(shutil, "which", lambda name: f"/usr/bin/{name}")
 
     class Done:
         def __init__(self, code):
@@ -118,10 +120,10 @@ def test_run_brain_passes_brain_py_exit_code_on(monkeypatch, tmp_path: Path, ret
 
     monkeypatch.setattr(pt.subprocess, "run", lambda cmd, check, cwd: Done(returncode))
     if returncode == 0:
-        pt._run_brain("stats")
+        memory_commands._run_brain("stats")
     else:
         with pytest.raises(SystemExit) as exc:
-            pt._run_brain("stats")
+            memory_commands._run_brain("stats")
         assert exc.value.code == returncode
 
 

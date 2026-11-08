@@ -48,21 +48,35 @@ async function loadThoughts() {
         offset: listState.offset
     });
 
+    let data;
     try {
         const response = await fetch(`/api/thoughts?${params}`);
-        const data = await response.json();
-
-        if (data.error) {
-            console.error('Error loading thoughts:', data.error);
-            return;
-        }
-
-        listState.total = data.total;
-        renderTable(data.thoughts);
-        updatePagination();
+        data = await response.json();
+        // Errors come as `error` from this route and as `detail` from a broken config.
+        data.error = data.error || data.detail || (response.ok ? null : `HTTP ${response.status}`);
     } catch (err) {
-        console.error('Failed to fetch thoughts:', err);
+        data = { error: `Failed to load thoughts: ${err.message}` };
     }
+    if (data.error) {
+        showListError(data.error);
+        return;
+    }
+
+    listState.total = data.total;
+    renderTable(data.thoughts);
+    updatePagination();
+}
+
+// Say what the server said instead of leaving the table blank (#8781).
+function showListError(message) {
+    const cell = document.createElement('td');
+    cell.colSpan = 4;
+    cell.className = 'empty-state';
+    cell.textContent = message;
+    const row = document.createElement('tr');
+    row.appendChild(cell);
+    document.getElementById('thoughts-body').replaceChildren(row);
+    document.getElementById('list-stats').textContent = '';
 }
 
 function renderTable(thoughts) {
@@ -86,7 +100,7 @@ function renderTable(thoughts) {
         } catch(e) {}
 
         tr.innerHTML = `
-            <td class="col-type"><span class="badge badge-${t.type}">${t.type}</span></td>
+            <td class="col-type"><span class="badge badge-${t.type.replace(/[^\w-]/g, '')}">${escapeHtml(t.type)}</span></td>
             <td class="col-content">${escapeHtml(t.content).substring(0, 150)}${t.content.length > 150 ? '...' : ''}</td>
             <td class="col-project">${escapeHtml(t.project || '')}</td>
             <td class="col-date">${dateStr}</td>

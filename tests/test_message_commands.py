@@ -12,7 +12,9 @@ from click.testing import CliRunner
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 import pt
-from pt import cli, _load_chat_config, _format_message_line
+from commands import message as message_commands  # noqa: E402
+from pt import cli
+from commands.message import _load_chat_config, _format_message_line
 
 
 @pytest.fixture
@@ -132,8 +134,8 @@ class TestMessageList:
                  "recipient": None, "body": "test", "priority": "normal", "reply_to": None}
             ]
         }
-        with patch("pt._load_chat_config", return_value={"url": "http://x", "key": "k", "sender": "s"}), \
-             patch("pt._chat_api_request", return_value=mock_response):
+        with patch("commands.message._load_chat_config", return_value={"url": "http://x", "key": "k", "sender": "s"}), \
+             patch("commands.message._chat_api_request", return_value=mock_response):
             result = runner.invoke(cli, ["message", "list", "--json"])
             assert result.exit_code == 0
             data = json.loads(result.output)
@@ -146,16 +148,16 @@ class TestMessageList:
                  "recipient": None, "body": "Hello", "priority": "normal", "reply_to": None}
             ]
         }
-        with patch("pt._load_chat_config", return_value={"url": "http://x", "key": "k", "sender": "s"}), \
-             patch("pt._chat_api_request", return_value=mock_response):
+        with patch("commands.message._load_chat_config", return_value={"url": "http://x", "key": "k", "sender": "s"}), \
+             patch("commands.message._chat_api_request", return_value=mock_response):
             result = runner.invoke(cli, ["message", "list"])
             assert result.exit_code == 0
             assert "#1" in result.output
             assert "era" in result.output
 
     def test_list_empty(self, runner):
-        with patch("pt._load_chat_config", return_value={"url": "http://x", "key": "k", "sender": "s"}), \
-             patch("pt._chat_api_request", return_value={"messages": []}):
+        with patch("commands.message._load_chat_config", return_value={"url": "http://x", "key": "k", "sender": "s"}), \
+             patch("commands.message._chat_api_request", return_value={"messages": []}):
             result = runner.invoke(cli, ["message", "list"])
             assert "No messages found" in result.output
 
@@ -174,13 +176,13 @@ def isolate_chat_identity(tmp_path, monkeypatch):
     monkeypatch.delenv("AGENT_CHAT_SENDER", raising=False)
     # Also keep them off the real kanban DB, which recipient validation reads.
     # None means "cannot verify", so sends are not blocked by isolation.
-    monkeypatch.setattr(pt, "_known_chat_addresses", lambda: None)
+    monkeypatch.setattr(message_commands, "_known_chat_addresses", lambda: None)
 
 
 class TestMessageSend:
     def test_send_basic(self, runner):
-        with patch("pt._load_chat_config", return_value={"url": "http://x", "key": "k", "sender": "test-agent"}), \
-             patch("pt._chat_api_request", return_value={"id": 42}) as mock_req:
+        with patch("commands.message._load_chat_config", return_value={"url": "http://x", "key": "k", "sender": "test-agent"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 42}) as mock_req:
             result = runner.invoke(cli, ["message", "send", "Hello world"])
             assert result.exit_code == 0
             assert "Sent #42" in result.output
@@ -189,16 +191,16 @@ class TestMessageSend:
             assert call_data["body"] == "Hello world"
 
     def test_send_with_recipient(self, runner):
-        with patch("pt._load_chat_config", return_value={"url": "http://x", "key": "k", "sender": "test-agent"}), \
-             patch("pt._chat_api_request", return_value={"id": 43}) as mock_req:
+        with patch("commands.message._load_chat_config", return_value={"url": "http://x", "key": "k", "sender": "test-agent"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 43}) as mock_req:
             result = runner.invoke(cli, ["message", "send", "Check this", "--to", "mini-claude"])
             assert result.exit_code == 0
             call_data = mock_req.call_args[1]["data"]
             assert call_data["to"] == "mini-claude"
 
     def test_send_with_priority_and_reply(self, runner):
-        with patch("pt._load_chat_config", return_value={"url": "http://x", "key": "k", "sender": "test-agent"}), \
-             patch("pt._chat_api_request", return_value={"id": 44}) as mock_req:
+        with patch("commands.message._load_chat_config", return_value={"url": "http://x", "key": "k", "sender": "test-agent"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 44}) as mock_req:
             result = runner.invoke(cli, ["message", "send", "Ack", "--priority", "high", "--reply-to", "10"])
             assert result.exit_code == 0
             call_data = mock_req.call_args[1]["data"]
@@ -206,8 +208,8 @@ class TestMessageSend:
             assert call_data["reply_to"] == 10
 
     def test_send_json_output(self, runner):
-        with patch("pt._load_chat_config", return_value={"url": "http://x", "key": "k", "sender": "test-agent"}), \
-             patch("pt._chat_api_request", return_value={"id": 45, "ts": "2026-04-03T10:00:00Z"}):
+        with patch("commands.message._load_chat_config", return_value={"url": "http://x", "key": "k", "sender": "test-agent"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 45, "ts": "2026-04-03T10:00:00Z"}):
             result = runner.invoke(cli, ["message", "send", "Hello", "--json"])
             assert result.exit_code == 0
             data = json.loads(result.output)
@@ -229,16 +231,16 @@ class TestInboxSemantics:
 
     def test_defaults_to_own_inbox(self, runner, tmp_path, monkeypatch):
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._chat_api_request", return_value={"messages": [], "order": "desc"}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._chat_api_request", return_value={"messages": [], "order": "desc"}) as req:
             runner.invoke(cli, ["message", "list"])
 
         assert req.call_args[1]["params"]["for"] == "project-tracker"
 
     def test_all_flag_shows_whole_board(self, runner, tmp_path, monkeypatch):
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._chat_api_request", return_value={"messages": [], "order": "desc"}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._chat_api_request", return_value={"messages": [], "order": "desc"}) as req:
             runner.invoke(cli, ["message", "list", "--all"])
 
         assert "for" not in req.call_args[1]["params"]
@@ -246,8 +248,8 @@ class TestInboxSemantics:
     def test_requests_newest_rows_from_server(self, runner, tmp_path, monkeypatch):
         """order=desc selects WHICH rows the limit takes, not just their order."""
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._chat_api_request", return_value={"messages": [], "order": "desc"}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._chat_api_request", return_value={"messages": [], "order": "desc"}) as req:
             runner.invoke(cli, ["message", "list"])
 
         assert req.call_args[1]["params"]["order"] == "desc"
@@ -258,8 +260,8 @@ class TestInboxSemantics:
             {"id": 1, "sender": "a", "body": "old", "ts": "2026-04-02T00:00:00Z", "priority": "normal"},
             {"id": 91, "sender": "b", "body": "new", "ts": "2026-08-30T00:00:00Z", "priority": "normal"},
         ]
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._chat_api_request", return_value={"messages": msgs, "order": "desc"}):
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._chat_api_request", return_value={"messages": msgs, "order": "desc"}):
             result = runner.invoke(cli, ["message", "list"])
 
         assert result.output.index("#91") < result.output.index("#1")
@@ -270,8 +272,8 @@ class TestInboxSemantics:
             {"id": 1, "sender": "a", "body": "old", "ts": "2026-04-02T00:00:00Z", "priority": "normal"},
             {"id": 91, "sender": "b", "body": "new", "ts": "2026-08-30T00:00:00Z", "priority": "normal"},
         ]
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._chat_api_request", return_value={"messages": msgs, "order": "desc"}):
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._chat_api_request", return_value={"messages": msgs, "order": "desc"}):
             result = runner.invoke(cli, ["message", "list", "--oldest-first"])
 
         assert result.output.index("#1") < result.output.index("#91")
@@ -293,8 +295,8 @@ class TestInboxSemantics:
             {"id": 91, "sender": "b", "body": "z", "ts": "2026-08-30T00:00:00Z", "priority": "normal"},
         ]
         responses = [{"messages": oldest_page}, {"messages": wide}]
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._chat_api_request", side_effect=responses):
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._chat_api_request", side_effect=responses):
             result = runner.invoke(cli, ["message", "list", "--limit", "2"])
 
         # Shows the newest two, not the oldest two.
@@ -313,8 +315,8 @@ class TestSelfSendGuard:
 
     def test_send_to_self_is_refused(self, runner, tmp_path, monkeypatch):
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(cli, ["message", "send", "hi", "--to", "project-tracker"])
 
         assert result.exit_code != 0
@@ -329,8 +331,8 @@ class TestSelfSendGuard:
         message went to this very session (#6775)."""
         self._identity(tmp_path, monkeypatch, "project-tracker")
         monkeypatch.setenv("AGENT_CHAT_MACHINE", "laptop")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(
                 cli,
                 ["message", "send", "hi", "--to", "project-tracker",
@@ -348,8 +350,8 @@ class TestSelfSendGuard:
         machine's floor manager — a real peer, not a self-send."""
         self._identity(tmp_path, monkeypatch, "project-tracker")
         monkeypatch.setenv("AGENT_CHAT_MACHINE", "laptop")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(
                 cli,
                 ["message", "send", "hi", "--to", "project-tracker",
@@ -365,8 +367,8 @@ class TestSelfSendGuard:
     ):
         self._identity(tmp_path, monkeypatch, "project-tracker")
         monkeypatch.setenv("AGENT_CHAT_MACHINE", "laptop")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(
                 cli,
                 ["message", "send", "hi", "--to", "ai-metrics", "--machine", "laptop"],
@@ -377,8 +379,8 @@ class TestSelfSendGuard:
 
     def test_send_to_peer_is_allowed(self, runner, tmp_path, monkeypatch):
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(cli, ["message", "send", "hi", "--to", "ai-metrics"])
 
         assert result.exit_code == 0
@@ -387,8 +389,8 @@ class TestSelfSendGuard:
     def test_project_beats_machine_global_config(self, runner, tmp_path, monkeypatch):
         """The whole point: six FMs on one machine must not share a sender."""
         self._identity(tmp_path, monkeypatch, "ai-metrics")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "claude-architect"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "claude-architect"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             runner.invoke(cli, ["message", "send", "hi"])
 
         assert req.call_args[1]["data"]["sender"] == "ai-metrics"
@@ -410,9 +412,9 @@ class TestUnknownAddressGuard:
 
     def test_unknown_address_is_refused(self, runner, tmp_path, monkeypatch):
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._known_chat_addresses", return_value={"project-tracker", "ai-metrics"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._known_chat_addresses", return_value={"project-tracker", "ai-metrics"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(cli, ["message", "send", "hi", "--to", "no-such-project"])
 
         assert result.exit_code != 0
@@ -421,18 +423,18 @@ class TestUnknownAddressGuard:
 
     def test_typo_gets_a_suggestion(self, runner, tmp_path, monkeypatch):
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._known_chat_addresses", return_value={"project-tracker", "ai-metrics"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}):
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._known_chat_addresses", return_value={"project-tracker", "ai-metrics"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}):
             result = runner.invoke(cli, ["message", "send", "hi", "--to", "ai-metrcs"])
 
         assert "ai-metrics" in result.output
 
     def test_known_address_sends(self, runner, tmp_path, monkeypatch):
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._known_chat_addresses", return_value={"project-tracker", "ai-metrics"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._known_chat_addresses", return_value={"project-tracker", "ai-metrics"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(cli, ["message", "send", "hi", "--to", "ai-metrics"])
 
         assert result.exit_code == 0
@@ -441,9 +443,9 @@ class TestUnknownAddressGuard:
     def test_machine_qualified_address_validates_on_project(self, runner, tmp_path, monkeypatch):
         """`ai-metrics@mini` is valid because `ai-metrics` is a known project."""
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._known_chat_addresses", return_value={"project-tracker", "ai-metrics"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._known_chat_addresses", return_value={"project-tracker", "ai-metrics"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(cli, ["message", "send", "hi", "--to", "ai-metrics@mini"])
 
         assert result.exit_code == 0
@@ -451,9 +453,9 @@ class TestUnknownAddressGuard:
 
     def test_force_overrides(self, runner, tmp_path, monkeypatch):
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._known_chat_addresses", return_value={"project-tracker"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._known_chat_addresses", return_value={"project-tracker"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(cli, ["message", "send", "hi", "--to", "odd-name", "--force"])
 
         assert result.exit_code == 0
@@ -462,9 +464,9 @@ class TestUnknownAddressGuard:
     def test_unavailable_project_list_does_not_block(self, runner, tmp_path, monkeypatch):
         """A DB hiccup must mean 'cannot verify', never 'invalid'."""
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._known_chat_addresses", return_value=None), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._known_chat_addresses", return_value=None), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(cli, ["message", "send", "hi", "--to", "anything"])
 
         assert result.exit_code == 0
@@ -475,9 +477,9 @@ class TestUnknownAddressGuard:
         a reachable recipient like any other known address.
         """
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._known_chat_addresses", return_value={"project-tracker", "_toolbox"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._known_chat_addresses", return_value={"project-tracker", "_toolbox"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(cli, ["message", "send", "hi", "--to", "_toolbox"])
 
         assert result.exit_code == 0
@@ -487,9 +489,9 @@ class TestUnknownAddressGuard:
     def test_underscore_prefixed_sender_can_send(self, runner, tmp_path, monkeypatch):
         """A `_toolbox` session's own frozen identity must work as the sender."""
         self._identity(tmp_path, monkeypatch, "_toolbox")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._known_chat_addresses", return_value={"project-tracker", "_toolbox"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._known_chat_addresses", return_value={"project-tracker", "_toolbox"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(cli, ["message", "send", "hi", "--to", "project-tracker"])
 
         assert result.exit_code == 0
@@ -507,9 +509,9 @@ class TestMachineQualifiedSend:
 
     def test_machine_qualifies_the_recipient(self, runner, tmp_path, monkeypatch):
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._known_chat_addresses", return_value={"project-tracker", "ai-metrics"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._known_chat_addresses", return_value={"project-tracker", "ai-metrics"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(
                 cli, ["message", "send", "hi", "--to", "ai-metrics", "--machine", "mini"])
 
@@ -519,9 +521,9 @@ class TestMachineQualifiedSend:
     def test_machine_validates_on_the_project_part(self, runner, tmp_path, monkeypatch):
         """An unknown project stays refused even when qualified."""
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._known_chat_addresses", return_value={"project-tracker"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._known_chat_addresses", return_value={"project-tracker"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(
                 cli, ["message", "send", "hi", "--to", "nope", "--machine", "mini"])
 
@@ -530,8 +532,8 @@ class TestMachineQualifiedSend:
 
     def test_machine_without_to_is_an_error(self, runner, tmp_path, monkeypatch):
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             result = runner.invoke(cli, ["message", "send", "hi", "--machine", "mini"])
 
         assert result.exit_code != 0
@@ -539,9 +541,9 @@ class TestMachineQualifiedSend:
 
     def test_existing_qualifier_is_not_doubled(self, runner, tmp_path, monkeypatch):
         self._identity(tmp_path, monkeypatch, "project-tracker")
-        with patch("pt._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
-             patch("pt._known_chat_addresses", return_value={"project-tracker", "ai-metrics"}), \
-             patch("pt._chat_api_request", return_value={"id": 1}) as req:
+        with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "cfg"}), \
+             patch("commands.message._known_chat_addresses", return_value={"project-tracker", "ai-metrics"}), \
+             patch("commands.message._chat_api_request", return_value={"id": 1}) as req:
             runner.invoke(
                 cli, ["message", "send", "hi", "--to", "ai-metrics@laptop", "--machine", "mini"])
 
@@ -557,12 +559,35 @@ def test_no_fallback_sender_can_be_the_human(runner, monkeypatch, source, sender
     if source == "environ":
         monkeypatch.setenv("AGENT_CHAT_SENDER", sender)
     config = {"url": "u", "key": "k", "sender": sender if source == "config" else ""}
-    with patch("pt._load_chat_config", return_value=config), \
-         patch("pt._known_chat_addresses", return_value=None), \
-         patch("pt._chat_api_request", return_value={"messages": [], "order": "desc", "id": 1}) as req:
+    with patch("commands.message._load_chat_config", return_value=config), \
+         patch("commands.message._known_chat_addresses", return_value=None), \
+         patch("commands.message._chat_api_request", return_value={"messages": [], "order": "desc", "id": 1}) as req:
         sent = runner.invoke(cli, ["message", "send", "hi", "--to", "peer"])
         listed = runner.invoke(cli, ["message", "list"])
     senders = [c.kwargs["data"]["sender"] for c in req.call_args_list if c.kwargs.get("data")]
     inboxes = [c.kwargs["params"].get("for") for c in req.call_args_list if c.kwargs.get("params")]
     assert (sent.exit_code == 0, senders, listed.exit_code) == (allowed, [sender] if allowed else [], 0)
     assert inboxes == [sender if allowed else None]
+
+
+def test_send_from_outside_the_repo_finds_agent_chat_identity(tmp_path):
+    """A fresh `pt message send` outside the repo loads agent-chat/identity.py.
+
+    In-process tests can't catch a wrong path to it: another test file puts
+    agent-chat/ on sys.path first. The server is a closed local port, so the
+    send fails at the network, after identity has been loaded.
+    """
+    import subprocess
+    (tmp_path / ".claude").mkdir()
+    (tmp_path / "projects").mkdir()  # pt refuses a HOME without one
+    (tmp_path / ".claude" / "agent-chat.env").write_text(
+        "AGENT_CHAT_URL=http://127.0.0.1:9\nAGENT_CHAT_API_KEY=x\nAGENT_CHAT_SENDER=test-sender\n"
+    )
+    pt_py = Path(__file__).resolve().parent.parent / "scripts" / "pt.py"
+    env = {**os.environ, "HOME": str(tmp_path), "PT_CALLER_CWD": str(tmp_path)}
+    result = subprocess.run(
+        [sys.executable, str(pt_py), "message", "send", "hi", "--to", "peer", "--force"],
+        cwd=tmp_path, env=env, capture_output=True, text=True, timeout=60,
+    )
+    assert "Traceback" not in result.stderr, result.stderr
+    assert result.returncode != 0 and "Agent Chat API unreachable" in result.stderr, result.stderr

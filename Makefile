@@ -146,5 +146,8 @@ backup:  ## Atomic point-in-time snapshot of tracker.db (no secrets needed).
 backup-status:  ## Backup + off-machine backup health.
 	./pt backup status
 
+record-runs:  ## Point scheduled LaunchAgents at scripts/record-run.sh (#8847); APPLY=1 changes them (RunAtLoad jobs start at once), UNDO=1 restores.
+	@$(PYTHON) scripts/record_runs_rewire.py $(if $(APPLY),--apply) $(if $(UNDO),--undo)
+
 doppler-check:  ## Verify Doppler auth by listing secret NAMES (never values).
 	doppler secrets --project project-tracker --config dev --only-names
