@@ -1,10 +1,12 @@
 # project-tracker
+<img width="1718" height="853" alt="Screenshot 2026-11-08 at 4 56 27 PM" src="https://github.com/user-attachments/assets/bb562c06-dea3-45f3-8d1f-68dfb12edd98" />
 
 A local Kanban board, project scanner and dashboard for a folder full of projects, built to be driven by AI coding agents as much as by people. One SQLite database holds the board; a CLI (`pt`) reads and writes it, and a FastAPI + React dashboard shows it.
 
 It runs on the machine it lives on. Nothing is hosted and no account is needed.
 
 ## What it does
+<img width="600" height="650" alt="Screenshot 2026-11-08 at 5 00 23 PM" src="https://github.com/user-attachments/assets/fafaf5a5-34b2-437a-904e-f99364f30ad6" />
 
 - **Board.** Cards move Backlog → To Do → In Progress → Review → Done, per project (`pt tasks`). Everything reads and writes through the CLI or the dashboard's API, and destructive operations back up first.
 - **Projects.** `pt scan` finds the projects in your projects folder (any directory with a `.git`, a README or a build file) and records them. The dashboard shows their cards, GitHub activity and scheduled jobs.
