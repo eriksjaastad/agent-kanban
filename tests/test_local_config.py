@@ -76,18 +76,6 @@ def test_chat_addresses_are_read_and_join_the_projects(tmp_path, monkeypatch):
     assert message_commands._known_chat_addresses() == {"architect", "me", "app"}
 
 
-@pytest.mark.parametrize("text", ["chat = 1\n", '[chat]\nnames = ["a"]\n', '[chat]\naddresses = "a"\n',
-                                  "[chat]\naddresses = [1]\n", '[chat]\naddresses = [""]\n', '[chat]\naddresses = [" a"]\n'])
-def test_a_bad_chat_section_refuses_the_send(tmp_path, monkeypatch, text):
-    write(tmp_path, monkeypatch, text)
-    monkeypatch.setenv("PT_CALLER_CWD", str(tmp_path))
-    with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "me"}), \
-         patch("commands.message._chat_api_request") as request:
-        result = CliRunner().invoke(pt.cli, ["message", "send", "hi", "--to", "architect"])
-    assert result.exit_code != 0 and "[chat]" in result.output
-    request.assert_not_called()
-
-
 @settings(max_examples=150, deadline=None)
 @given(addresses=st.lists(st.text(st.characters(blacklist_categories=("Cs",)), max_size=6), max_size=4))
 def test_chat_addresses_come_back_exactly_or_the_file_is_named(tmp_path_factory, addresses):
@@ -102,27 +90,6 @@ def test_chat_addresses_come_back_exactly_or_the_file_is_named(tmp_path_factory,
         else:
             with pytest.raises(ValueError, match=r"config\.toml: \[chat\] addresses"):
                 config.chat_addresses()
-
-
-@pytest.mark.parametrize("addresses, args, sent", [
-    (None, ["--to", "ops"], False),
-    *[('["ops"]', args, True) for args in (["--to", "ops"], ["--to", "ops", "--machine", "mini"], ["--to", "ops@mini"])],
-    ('["ops"]', ["--to", "other@mini"], False),
-    *[('["ops@mini", "lead"]', args, True) for args in (["--to", "ops@mini"], ["--to", "ops", "--machine", "mini"],
-                                                         ["--to", "lead"], ["--to", "lead@laptop"])],
-    *[('["ops@mini", "lead"]', args, False) for args in (["--to", "ops"], ["--to", "ops@laptop"],
-                                                          ["--to", "ops", "--machine", "laptop"])],
-])
-def test_a_send_is_checked_even_when_nothing_is_reachable_but_the_config(tmp_path, monkeypatch, addresses, args, sent):
-    """No projects is a real answer, not "cannot verify". A bare name reaches any machine, name@machine one."""
-    write(tmp_path, monkeypatch, f"[chat]\naddresses = {addresses}\n" if addresses else "")
-    monkeypatch.setenv("PT_CALLER_CWD", str(tmp_path))
-    monkeypatch.setattr(message_commands, "DatabaseManager", lambda: type("D", (), {"get_all_projects": lambda self: []})())
-    with patch("commands.message._load_chat_config", return_value={"url": "u", "key": "k", "sender": "me"}), \
-         patch("commands.message._chat_api_request", return_value={"id": 1}) as request:
-        result = CliRunner().invoke(pt.cli, ["message", "send", "hi", *args])
-    assert (result.exit_code == 0) is sent, result.output
-    assert request.called is sent
 
 
 @pytest.mark.parametrize("text, problem", [

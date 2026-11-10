@@ -35,17 +35,61 @@ make build-frontend
 
 `pt` runs itself through uv, so the first call installs its Python dependencies. Set `PROJECTS_ROOT` to scan a folder other than `~/projects`.
 
+## Commands
+
+Every group has `--help` with examples; most read commands take `--json`.
+
+**Set up and find your projects**
+
+- `pt init`: create the database (`data/tracker.db`). Run it once, before anything else.
+- `pt scan`: walk the projects folder and record every project in it. Run it after you add, move or delete projects.
+- `pt sync-project <name>`: re-read one project. Faster than a full scan when only one changed.
+- `pt list` and `pt status <name>`: every project at a glance, or one in detail.
+- `pt project`: add a project without scanning, or mark one as checked out to a machine, so an agent on another machine leaves it alone.
+- `pt retire-project <name>`: retire a project: move its folder to the trash, remove its cards, and list what still mentions it. It only prints the plan until you pass `--execute`.
+
+**Run the board**
+
+- `pt tasks`: the Kanban board. Create a card, then `start`, `review` and `done` it as work moves; `pt tasks next` gives an agent the next card to take.
+- `pt launch`: open the dashboard at http://127.0.0.1:8000, the same board with drag and drop.
+- `pt handoff`: leave a structured note about unfinished work for the next session, and mark it resolved when someone picks it up.
+
+**Keep reference data in one place**
+
+- `pt info`: per-project facts an agent needs and shouldn't guess: hosts, paths, which secret lives where (names only).
+- `pt reminders`: one-line things worth remembering (a tool, a guide, a decision), shown on the dashboard's Reminders page.
+- `pt calendar`: dated events and recurring jobs, so agents can see what is due or overdue.
+- `pt jobs import`: load job listings from a JSONL file into the dashboard's Jobs page.
+
+**Housekeeping**
+
+- `pt hygiene`: read-only check of every project's git state (uncommitted work, local-only or unpushed branches, stashes).
+- `pt worktrees`: list and clean the `.claude/worktrees/` that sub-agents leave behind.
+- `pt size`: lines of code per project, scored against a baseline, to see whether a cleanup actually shrank anything.
+- `pt record-run`: record a scheduled job's start and exit code (`scripts/record-run.sh` wraps a job with it), so failed runs show up.
+- `pt migration`: record a bulk operation's start, finish and manifest, so a large change can be audited later.
+
+**Look after the install**
+
+- `pt backup`: check that backups are recent, take one, or restore from one.
+- `pt db migrate`: apply schema migrations after an update.
+- `pt config show --effective`: what is configured, and from where.
+- `pt doctor`: check whether this install works for a non-interactive caller such as an agent (`--json` for scripts).
+
+**Need parts that are not in this repo (not included yet)**
+
+- `pt memory`, `pt graph` and `pt skills`: search, write and analyse a shared agent memory store. See `[memory]` below.
+- `pt message`: send and read messages between agents. See `[chat]` below.
+- `pt site-stats`: website stats from a central collector, which is not in this repo.
+
 ## Optional integrations
 
-Anything beyond the board is off until you turn it on in a private config file, `~/.config/project-tracker/config.toml` (or `$PT_CONFIG`). A section that is absent turns its integration off, and the commands that need it say so. A section that is wrong is an error naming the file. Every key is documented under "Local integrations" in [`scripts/config.py`](scripts/config.py):
+Anything beyond the board is off until you turn it on in a private config file, `~/.config/project-tracker/config.toml` (or `$PT_CONFIG`). A section that is absent turns its integration off, and the commands that need it say so. A section that is wrong is an error naming the file. Every key is documented under "Local integrations" in [`scripts/config.py`](scripts/config.py).
 
-| Section | Turns on |
-|---|---|
-| `[memory]` | `pt memory` and `pt graph`, over a separate memory store (a `brain.py` and its `brain.db`) |
-| `[chat]` | more recipients for `pt message`, which talks to an Agent Chat server |
-| `[digest]` | a daily alert email (`scripts/alert_digest.py`) |
-| `[morning]` | the dashboard's Morning page, read from a plan README |
-| `[jobs]` | house rules for the Jobs page's tailor-resume prompt |
+- **`[memory]`, used daily, not included yet.** `pt memory`, `pt graph` and `pt skills` do not hold memory themselves. They run a separate memory store's `brain.py`, found at the section's `root`, over its `brain.db`, optionally under a Doppler project the section names. That store is its own project and is not in this repo yet, so without it these commands say memory is off.
+- **`[chat]`, used daily, not included yet.** `pt message` is a client for an Agent Chat server, which is not in this repo yet. The server's URL and key come from `~/.claude/agent-chat.env` or the environment. The section only adds recipient addresses beyond your projects.
+- **`[digest]`, used daily.** A daily alert email (`scripts/alert_digest.py`) listing failed scheduled jobs and due or missed calendar events. It needs an email-sending account.
+- **`[jobs]`, used weekly.** House rules for the Jobs page's tailor-resume prompt.
 
 `pt config show --effective` prints what is configured, and `pt doctor` checks it.
 
