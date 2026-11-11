@@ -1,9 +1,11 @@
 # agent-kanban
 <img width="1718" height="853" alt="Screenshot 2026-11-08 at 4 56 27 PM" src="https://github.com/user-attachments/assets/bb562c06-dea3-45f3-8d1f-68dfb12edd98" />
 
-A local Kanban board, project scanner and dashboard for a folder full of projects, built to be driven by AI coding agents as much as by people. One SQLite database holds the board; a CLI (`pt`) reads and writes it, and a FastAPI + React dashboard shows it.
+A local Kanban board, project scanner and dashboard for a folder full of projects. One SQLite database holds the board; a CLI (`pt`) reads and writes it, and a FastAPI + React dashboard shows it.
 
 **Built for one person running many personal projects with coding agents, not for teams.** There are no user accounts or permissions: one owner and their agents share one board.
+
+**Agent-first, from the first commit.** The point of `pt` is that a coding agent gets what it needs without hunting through files. Instructions that used to live in Markdown docs moved into the CLI itself: `pt --help` and each command's `--help` are the documentation, and `pt tasks`, `pt info` and `pt doctor --json` give an agent its work, its context and a health check in one call each. The dashboard is for the person watching.
 
 It runs on the machine it lives on. Nothing is hosted and no account is needed.
 
