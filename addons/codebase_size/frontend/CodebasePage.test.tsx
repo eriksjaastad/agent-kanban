@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CodebasePage } from './CodebasePage';
-import type { CodebaseSizeReport, CodebaseSizeRow } from '../types';
+import type { CodebaseSizeReport, CodebaseSizeRow } from './api';
 
 const FORMULA = 'score = (baseline_lean − current_lean) / baseline_lean × 100';
 

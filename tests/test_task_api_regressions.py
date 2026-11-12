@@ -38,7 +38,7 @@ def _request_for_host(host: str) -> Request:
         {
             "type": "http",
             "method": "POST",
-            "path": "/api/codebase-size/refresh",
+            "path": "/api/refresh",
             "headers": [],
             "client": (host, 5000),
             "server": ("testserver", 80),

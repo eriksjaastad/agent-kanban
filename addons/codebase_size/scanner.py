@@ -2,7 +2,7 @@
 
 Measures how much code and documentation each git repo under the projects root
 carries and scores a repo against its baseline. Runs are stored by
-``db.codebase_size.CodebaseSizeMixin`` in ``codebase_size_snapshots``; this
+``addons.codebase_size.db.CodebaseSizeDB`` in ``codebase_size_snapshots``; this
 module has no database code.
 
 Optimization score: ``SCORE_FORMULA`` below is the single statement of the

@@ -220,8 +220,6 @@ def test_concurrent_marker_creates_are_not_lost(live_server, monkeypatch, tmp_pa
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 UNSERIALIZED_WRITES = {
-    # Sync on main already, with its own non-blocking try-lock.
-    "refresh_codebase_size",
     # Writes nothing to tracker.db: reads open jobs, then shells out to
     # `pt message send` (up to 60 s), which must not hold up other writes.
     "queue_job_agent_prompt",
@@ -235,6 +233,7 @@ def test_every_write_route_is_serialized():
         for route in dashboard_app.app.routes
         if getattr(route, "methods", None) and route.methods & WRITE_METHODS
         and not getattr(route.endpoint, "serialized", False)
+        and not getattr(route.endpoint, "own_lock", False)  # guards itself (common._own_lock)
         and route.endpoint.__name__ not in UNSERIALIZED_WRITES
     )
     assert missing == []

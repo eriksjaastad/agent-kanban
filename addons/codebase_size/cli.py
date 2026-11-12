@@ -5,12 +5,13 @@ from datetime import datetime
 from typing import Optional
 
 import click
-from db.manager import DatabaseManager
+
+from addons.codebase_size.db import CodebaseSizeDB
 
 
-def _size_db() -> "DatabaseManager":
+def _size_db() -> CodebaseSizeDB:
     """DatabaseManager with migration 017 confirmed, checked before any scan."""
-    db = DatabaseManager()
+    db = CodebaseSizeDB()
     try:
         db.codebase_baseline()
     except Exception as exc:  # governance: allow-silent SF001: only "no such table" is mapped; anything else is re-raised
@@ -40,7 +41,7 @@ def size_command(ctx: click.Context, json_output: bool, snapshot: bool) -> None:
     repo's row in the earliest `pt size --snapshot` run. Positive = leaner.
     Each repo's checked-out working tree is measured, best effort.
     """
-    from scripts import codebase_size as cs
+    from addons.codebase_size import scanner as cs
     from scripts.config import projects_root
 
     db = _size_db()

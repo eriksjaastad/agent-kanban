@@ -7,13 +7,14 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Optional
 
 from db.manager import DatabaseManager
 from fastapi import HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from scripts.addon_registry import enabled as enabled_addons
 from scripts.config import (
     MEMORY_NOT_CONFIGURED,
     MemoryIntegration,
@@ -65,6 +66,16 @@ def _serialized(fn):
     return wrapper
 
 
+def _own_lock(fn):
+    """Mark a write handler that guards itself with its own try-lock instead.
+
+    For a long write (a scan) that must not hold up every other write on the
+    single write thread. The write-route test accepts it as serialized.
+    """
+    setattr(fn, "own_lock", True)
+    return fn
+
+
 # Setup templates and static files
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
@@ -93,8 +104,8 @@ NAVIGATION_TITLE = "Project Tracker"
 
 
 # Single source of truth for the shared navigation shell. Top-level order is
-# significant: seven compact entries, four of them dropdown groups. Reminders
-# stays a top-level leaf: the label on every page is the reminder (#8282).
+# significant: six compact entries, four of them dropdown groups, then each
+# enabled add-on's entries in add-on name order.
 # Each leaf keeps its original id/href/match_prefixes/navigation_type; only some labels
 # changed when the leaves moved inside a group (#7637).
 NAVIGATION_ITEMS = [
@@ -119,6 +130,7 @@ NAVIGATION_ITEMS = [
             {
                 "id": "kanban",
                 "label": "Board",
+                "solo_label": "Kanban Board",
                 "href": "/kanban",
                 "match_prefixes": ["/kanban"],
                 "navigation_type": "spa",
@@ -139,6 +151,7 @@ NAVIGATION_ITEMS = [
             {
                 "id": "jobs",
                 "label": "Listings",
+                "solo_label": "Job Listings",
                 "href": "/jobs",
                 "match_prefixes": ["/jobs"],
                 "navigation_type": "spa",
@@ -146,6 +159,7 @@ NAVIGATION_ITEMS = [
             {
                 "id": "jobs-submitted",
                 "label": "Submissions",
+                "solo_label": "Job Submissions",
                 "href": "/jobs/submitted",
                 "match_prefixes": ["/jobs/submitted"],
                 "navigation_type": "spa",
@@ -153,6 +167,7 @@ NAVIGATION_ITEMS = [
             {
                 "id": "jobs-volunteer",
                 "label": "Volunteer",
+                "solo_label": "Volunteer Jobs",
                 "href": "/jobs/volunteer",
                 "match_prefixes": ["/jobs/volunteer"],
                 "navigation_type": "spa",
@@ -166,6 +181,7 @@ NAVIGATION_ITEMS = [
             {
                 "id": "agent-chat",
                 "label": "Chat",
+                "solo_label": "Agent Chat",
                 "href": "/agent-chat",
                 "match_prefixes": ["/agent-chat"],
                 "navigation_type": "spa",
@@ -173,15 +189,9 @@ NAVIGATION_ITEMS = [
             {
                 "id": "agentic",
                 "label": "Autonomy",
+                "solo_label": "Agent Autonomy",
                 "href": "/agentic",
                 "match_prefixes": ["/agentic"],
-                "navigation_type": "spa",
-            },
-            {
-                "id": "codebase",
-                "label": "Codebase size",
-                "href": "/codebase",
-                "match_prefixes": ["/codebase"],
                 "navigation_type": "spa",
             },
         ],
@@ -200,20 +210,53 @@ NAVIGATION_ITEMS = [
             {
                 "id": "graph",
                 "label": "Graph",
+                "solo_label": "Memory Graph",
                 "href": "/graph",
                 "match_prefixes": ["/graph"],
                 "navigation_type": "document",
             },
         ],
     },
-    {
-        "id": "reminders",
-        "label": "Reminders",
-        "href": "/reminders",
-        "match_prefixes": ["/reminders"],
-        "navigation_type": "spa",
-    },
 ]
+
+
+def add_addon_navigation(items: List[Dict[str, Any]], entries: Iterable[Dict[str, Any]]) -> None:
+    """Put each add-on menu entry in place: under the core group its "group" names, else at the end.
+
+    A group that does not exist is an error, so an entry is never dropped
+    from the menu without a word.
+    """
+    for entry in entries:
+        group_id = entry.get("group")
+        if group_id is None:
+            items.append(entry)
+            continue
+        group = next((item for item in items if item["id"] == group_id and "children" in item), None)
+        if group is None:
+            raise ValueError(f"menu entry {entry['id']!r} names no menu group {group_id!r}")
+        group["children"].append({key: value for key, value in entry.items() if key != "group"})
+
+
+def collapse_navigation(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Never a dropdown with one item: an empty group is left out, and a group
+    with one item is replaced by that item, under its "solo_label" if it has one.
+
+    Groups shrink when an add-on is off or absent (Erik, 2026-11-11).
+    """
+    collapsed = []
+    for item in items:
+        children = item.get("children")
+        if children is None or len(children) > 1:
+            collapsed.append(item)
+        elif children:
+            only = dict(children[0])
+            only["label"] = only.pop("solo_label", only["label"])
+            collapsed.append(only)
+    return collapsed
+
+
+add_addon_navigation(NAVIGATION_ITEMS, [entry for addon in enabled_addons() for entry in addon.nav])
+NAVIGATION_ITEMS = collapse_navigation(NAVIGATION_ITEMS)
 
 
 def is_navigation_item_active(item: Dict[str, object], path: str) -> bool:

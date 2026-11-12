@@ -7,12 +7,11 @@ import { CalendarPage } from './components/CalendarPage';
 import { AgentChatPage } from './components/AgentChatPage';
 import { JobsSubmittedPage } from './components/JobsSubmittedPage';
 import { VolunteerPage } from './components/VolunteerPage';
-import { CodebasePage } from './components/CodebasePage';
 import { MorningPage } from './components/MorningPage';
-import { RemindersPage } from './components/RemindersPage';
 import { Spinner } from './components/Spinner';
 import { PageBoundary } from './components/RouteErrorBoundary';
 import { ProjectsProvider } from './hooks/ProjectsProvider';
+import { addonRoutes } from './addons';
 import './App.css';
 
 // The only pages that draw charts. recharts is about a third of the bundle,
@@ -40,9 +39,8 @@ function App() {
                 <Route path="/jobs" element={<JobsPage />} />
                 <Route path="/jobs/submitted" element={<JobsSubmittedPage />} />
                 <Route path="/jobs/volunteer" element={<VolunteerPage />} />
-                <Route path="/codebase" element={<CodebasePage />} />
                 <Route path="/morning" element={<MorningPage />} />
-                <Route path="/reminders" element={<RemindersPage />} />
+                {addonRoutes.map(r => <Route key={r.path} path={r.path} element={r.element} />)}
                 <Route path="*" element={<Navigate to="/kanban" replace />} />
               </Routes>
             </Suspense>

@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from dashboard.app import app
 from dashboard.common import build_navigation, build_spa_shell_html, iter_navigation_leaves
+from scripts.addon_registry import enabled as enabled_addons
 
 
 client = TestClient(app)
@@ -43,6 +44,13 @@ def test_navigation_api_returns_shared_contract():
     payload = response.json()
     assert payload["title"] == "Project Tracker"
     items = payload["items"]
+    # The core's entries, then each enabled add-on's (none when addons/ is empty):
+    # an add-on entry that names a group goes last in that group.
+    addon_nav = [entry for addon in enabled_addons() for entry in addon.nav]
+    addon_ids = [entry["id"] for entry in addon_nav if "group" not in entry]
+
+    def added_to(group_id):
+        return [entry["id"] for entry in addon_nav if entry.get("group") == group_id]
     assert [item["id"] for item in items] == [
         "morning",
         "dashboard",
@@ -50,7 +58,7 @@ def test_navigation_api_returns_shared_contract():
         "group-jobs",
         "group-agents",
         "group-memory",
-        "reminders",
+        *addon_ids,
     ]
     assert items[0]["href"] == "/morning"
     assert items[0]["navigation_type"] == "spa"
@@ -59,10 +67,11 @@ def test_navigation_api_returns_shared_contract():
         item["id"]: [child["id"] for child in item.get("children", [])]
         for item in items
     }
-    assert children_by_group["group-kanban"] == ["kanban", "calendar"]
-    assert children_by_group["group-jobs"] == ["jobs", "jobs-submitted", "jobs-volunteer"]
-    assert children_by_group["group-agents"] == ["agent-chat", "agentic", "codebase"]
-    assert children_by_group["group-memory"] == ["memory", "graph"]
+    assert children_by_group["group-kanban"] == ["kanban", "calendar", *added_to("group-kanban")]
+    assert children_by_group["group-jobs"] == [
+        "jobs", "jobs-submitted", "jobs-volunteer", *added_to("group-jobs")]
+    assert children_by_group["group-agents"] == ["agent-chat", "agentic", *added_to("group-agents")]
+    assert children_by_group["group-memory"] == ["memory", "graph", *added_to("group-memory")]
 
     for group in items:
         if not group["id"].startswith("group-"):
@@ -84,7 +93,6 @@ def test_navigation_api_returns_shared_contract():
     assert leaves["jobs-volunteer"]["label"] == "Volunteer"
     assert leaves["agent-chat"]["label"] == "Chat"
     assert leaves["agentic"]["label"] == "Autonomy"
-    assert leaves["codebase"]["label"] == "Codebase size"
     assert leaves["memory"]["label"] == "Memory"
     assert leaves["graph"]["label"] == "Graph"
 
@@ -199,24 +207,40 @@ def test_dead_dashboard_endpoints_are_no_longer_served():
     assert client.get("/graph").status_code == 200
 
 
-def test_codebase_spa_route_and_navigation():
-    response = client.get("/codebase")
-    assert response.status_code in (200, 503)
+def test_no_dropdown_ever_has_one_item():
+    from dashboard.common import collapse_navigation
+
+    def leaf(leaf_id, **extra):
+        return {"id": leaf_id, "label": leaf_id.title(), "href": f"/{leaf_id}",
+                "match_prefixes": [f"/{leaf_id}"], "navigation_type": "spa", **extra}
+
+    items = [
+        leaf("home"),
+        {"id": "group-empty", "label": "Empty", "children": []},
+        {"id": "group-one", "label": "One", "children": [leaf("board", solo_label="Kanban Board")]},
+        {"id": "group-plain", "label": "Plain", "children": [leaf("calendar")]},
+        {"id": "group-two", "label": "Two", "children": [leaf("a", solo_label="Solo A"), leaf("b")]},
+    ]
+    collapsed = collapse_navigation(items)
+    assert [(item["id"], item["label"]) for item in collapsed] == [
+        ("home", "Home"), ("board", "Kanban Board"), ("calendar", "Calendar"), ("group-two", "Two")]
+    assert "children" not in collapsed[1] and "solo_label" not in collapsed[1]
+    assert [child["label"] for child in collapsed[3]["children"]] == ["A", "B"]
+
+
+def test_a_promoted_item_is_a_plain_tab_in_both_menus(monkeypatch):
+    import dashboard.common as common
+
+    # Leave Agents with one item, as if the others were add-ons turned off.
+    items = [dict(item) for item in common.NAVIGATION_ITEMS]
+    agents = next(item for item in items if item["id"] == "group-agents")
+    agents["children"] = [child for child in agents["children"] if child["id"] == "agent-chat"]
+    monkeypatch.setattr(common, "NAVIGATION_ITEMS", common.collapse_navigation(items))
+
     nav = client.get("/api/navigation").json()["items"]
-    item = leaf_by_id(nav, "codebase")
-    assert item["href"] == "/codebase"
-    assert item["navigation_type"] == "spa"
-    assert leaf_by_id(build_navigation("/codebase"), "codebase")["active"]
-    if response.status_code == 200:
-        assert '"id": "codebase"' in response.text
-
-
-def test_reminders_is_a_top_level_tab_on_spa_and_document_pages():
-    response = client.get("/reminders")
-    assert response.status_code in (200, 503)
-    item = next(i for i in client.get("/api/navigation").json()["items"] if i["id"] == "reminders")
-    assert (item["label"], item["href"], item["navigation_type"]) == (
-        "Reminders", "/reminders", "spa")
-    assert leaf_by_id(build_navigation("/reminders"), "reminders")["active"]
-    # The Jinja shell (/memory, /graph) renders the same top-level tab.
-    assert 'href="/reminders"' in client.get("/graph").text
+    chat = next(item for item in nav if item["id"] == "agent-chat")
+    assert (chat["label"], chat["href"], "children" in chat) == ("Agent Chat", "/agent-chat", False)
+    assert not any(item["id"] == "group-agents" for item in nav)
+    assert leaf_by_id(common.build_navigation("/agent-chat"), "agent-chat")["active"]
+    page = client.get("/graph").text
+    assert 'href="/agent-chat"' in page and "Agent Chat" in page

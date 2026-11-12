@@ -2,10 +2,10 @@
 
 from typing import Optional
 
-from db.manager import DatabaseManager
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from addons.reminders.db import RemindersDB
 from dashboard.common import _serialized, logger
 
 router = APIRouter()
@@ -31,7 +31,7 @@ def _reminders_db_error(action: str, exc: Exception) -> HTTPException:
 def list_reminders():
     """Active reminders in the order added, then built-in ones newest first."""
     try:
-        return DatabaseManager().list_reminders()
+        return RemindersDB().list_reminders()
     except Exception as exc:
         raise _reminders_db_error("list reminders", exc)
 
@@ -40,7 +40,7 @@ def list_reminders():
 @_serialized
 def add_reminder(payload: ReminderRequest):
     try:
-        reminder = DatabaseManager().add_reminder(
+        reminder = RemindersDB().add_reminder(
             payload.name, payload.purpose, payload.location
         )
     except ValueError:
@@ -54,7 +54,7 @@ def add_reminder(payload: ReminderRequest):
 @_serialized
 def mark_reminder_built_in(reminder_id: int):
     try:
-        reminder = DatabaseManager().mark_reminder_built_in(reminder_id)
+        reminder = RemindersDB().mark_reminder_built_in(reminder_id)
     except Exception as exc:
         raise _reminders_db_error("mark reminder built in", exc)
     if reminder is None:
@@ -66,7 +66,7 @@ def mark_reminder_built_in(reminder_id: int):
 @_serialized
 def remove_reminder(reminder_id: int):
     try:
-        reminder = DatabaseManager().remove_reminder(reminder_id)
+        reminder = RemindersDB().remove_reminder(reminder_id)
     except Exception as exc:
         raise _reminders_db_error("remove reminder", exc)
     if reminder is None:

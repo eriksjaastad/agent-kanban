@@ -2,7 +2,8 @@
     "include": [
         "dashboard",
         "scripts",
-        "tests"
+        "tests",
+        "addons"
     ],
     "extraPaths": [
         "scripts"

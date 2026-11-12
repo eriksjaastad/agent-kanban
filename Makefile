@@ -111,10 +111,10 @@ build-frontend: frontend-deps  ## Frontend typecheck + build (tsc -b && vite bui
 	cd "$(FRONTEND)" && npm run build
 
 test:  ## Full pytest suite (no secrets needed — tests run offline).
-	$(PYTEST_CMD) tests/ -q
+	$(PYTEST_CMD) tests/ addons/ -q
 
 test-fast:  ## Same suite, stop at the first failure.
-	$(PYTEST_CMD) tests/ -q -x --no-header
+	$(PYTEST_CMD) tests/ addons/ -q -x --no-header
 
 schema:  ## Regenerate scripts/db/schema.sql after adding a migration (tests fail until you do).
 	$(PYTHON) scripts/db/schema_dump.py --write

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { PageShell } from './PageShell';
-import { Spinner } from './Spinner';
-import { Notification } from './Notification';
-import { useRequest } from '../hooks/useRequest';
-import './JobsPage.css';
+import { PageShell } from '@core/components/PageShell';
+import { Spinner } from '@core/components/Spinner';
+import { Notification } from '@core/components/Notification';
+import { useRequest } from '@core/hooks/useRequest';
+import '@core/components/JobsPage.css';
 import './RemindersPage.css';
 
 // Reminders (#8282): things the user wants to remember they have, kept until

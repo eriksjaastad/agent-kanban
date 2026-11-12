@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "lint": "eslint . && cd ../.. && eslint -c dashboard/frontend/eslint.config.js --no-error-on-unmatched-pattern addons",
     "test": "vitest run",
     "preview": "vite preview"
   },

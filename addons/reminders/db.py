@@ -1,4 +1,4 @@
-"""Reminders: things the user wants to remember they have (#8282).
+"""Reminders' table helpers (#8282).
 
 The dashboard's /reminders page and `pt reminders` share these methods. A
 reminder is active until it is built into a process, skill or tool
@@ -10,6 +10,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from db.manager import DatabaseManager
+
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -20,8 +22,8 @@ def _optional(text: str | None) -> str | None:
     return cleaned or None
 
 
-class RemindersMixin:
-    """Reminder operations exposed through the shared DatabaseManager."""
+class RemindersDB(DatabaseManager):
+    """The core database plus the reminders table's operations."""
 
     def list_reminders(self) -> dict[str, list[dict[str, Any]]]:
         """Undeleted reminders: active in the order added, built-in newest first."""

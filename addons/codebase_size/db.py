@@ -1,7 +1,7 @@
 """Codebase size run storage for `pt size` (#8083).
 
-Scanning and scoring live in ``scripts/codebase_size.py`` and have no database
-code; this mixin only stores and reads ``codebase_size_snapshots``.
+Scanning and scoring live in ``scanner.py`` beside this file and have no
+database code; this class only stores and reads ``codebase_size_snapshots``.
 
 The table is append-only: rows are never updated or deleted (migration 017
 adds triggers that abort either), so a stored measurement cannot be lost or
@@ -15,6 +15,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 from typing import Iterable
+
+from db.manager import DatabaseManager
 
 _INSERT = """
     INSERT INTO codebase_size_snapshots
@@ -43,7 +45,7 @@ def _check_rows(rows: list) -> None:
 
 def _read_run(conn, newest: bool):
     """(date, {project: RepoSize}) of the newest or earliest run on ``conn``."""
-    from scripts.codebase_size import RepoSize
+    from addons.codebase_size.scanner import RepoSize
 
     order = "DESC" if newest else "ASC"
     edge = conn.execute(
@@ -60,8 +62,8 @@ def _read_run(conn, newest: bool):
     return date, {r[0]: RepoSize(*tuple(r)) for r in found}
 
 
-class CodebaseSizeMixin:
-    """Codebase size run operations exposed through the shared DatabaseManager."""
+class CodebaseSizeDB(DatabaseManager):
+    """The core database plus the codebase size runs."""
 
     def save_codebase_scan(self, rows: Iterable, snapshot_date: str) -> str:
         """Append ``rows`` as one new run, atomically; return its run_id.

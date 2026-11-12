@@ -37,6 +37,7 @@ from dashboard.common import (  # noqa: E402
 )
 
 # Import config
+from scripts.addon_registry import enabled as enabled_addons, load as load_addon_part
 from scripts.config import (
     PROJECTS_BASE_DIR,
     owner_name,
@@ -67,9 +68,6 @@ from dashboard.routes.ideas import (  # noqa: E402
 )
 from dashboard.routes.morning import (  # noqa: E402
     router as morning_router,
-)
-from dashboard.routes.reminders import (  # noqa: E402
-    router as reminders_router,
 )
 from dashboard.routes.outreach import (  # noqa: E402
     router as outreach_router,
@@ -148,9 +146,7 @@ if frontend_dist.exists():
 @app.get("/jobs", response_class=HTMLResponse)
 @app.get("/jobs/submitted", response_class=HTMLResponse)
 @app.get("/jobs/volunteer", response_class=HTMLResponse)
-@app.get("/codebase", response_class=HTMLResponse)
 @app.get("/morning", response_class=HTMLResponse)
-@app.get("/reminders", response_class=HTMLResponse)
 async def serve_react_app(request: Request):
     """Serve the React frontend for SPA routes."""
     return await serve_spa_shell(request)
@@ -621,19 +617,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
-# --- Task API Endpoints ---
-
-
-# --- Attachment API Endpoints (#5216) ---
-
-
 app.include_router(agentic_router)
-
-
-# --- Codebase size API (#8083) ---
-
-
-# --- Agentic Markers API (#5009) ---
 
 
 # --- Jobs API Endpoints (#7396) ---
@@ -644,11 +628,6 @@ app.include_router(jobs_router)
 # --- Outreach contacts API Endpoints (#7641) ---
 
 app.include_router(outreach_router)
-
-
-# --- Reminders API Endpoints (#8282) ---
-
-app.include_router(reminders_router)
 
 
 # --- Morning warm-up API Endpoint (#7616) ---
@@ -670,5 +649,13 @@ app.include_router(github_router)
 app.include_router(live_sites_router)
 app.include_router(review_health_router)
 app.include_router(site_stats_router)
+
+
+# Each add-on's API and the pages the React app shows for it.
+for _addon in enabled_addons():
+    if _addon.router:
+        app.include_router(load_addon_part(_addon.router))
+    for _page in _addon.pages:
+        app.add_api_route(_page, serve_react_app, methods=["GET"], response_class=HTMLResponse)
 
 

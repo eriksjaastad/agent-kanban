@@ -1,23 +1,26 @@
-"""Reminders: manager mixin, dashboard API and `pt reminders` (#8282)."""
+"""Reminders: table helpers, dashboard API and `pt reminders` (#8282)."""
 
 from __future__ import annotations
 
 import os
 import sqlite3
-import sys
 from contextlib import contextmanager
-from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-
-from pt import cli  # noqa: E402
-from dashboard.app import app  # noqa: E402
+from addons.reminders.db import RemindersDB
+from dashboard.app import app
+from pt import cli
 
 client = TestClient(app)
 ENV = {"PT_NO_BANNER": "1", "PT_SUPPRESS_MIGRATION_WARNING": "1"}
+
+
+@pytest.fixture
+def db(isolated_database) -> RemindersDB:
+    return RemindersDB()
 
 
 def _pt(*args: str):

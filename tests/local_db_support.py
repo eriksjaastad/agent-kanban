@@ -33,7 +33,7 @@ class LocalTestSupport:
         {
             "tasks", "projects", "task_history", "delete_audit_log", "handoffs",
             "migrations", "calendar_events", "ai_agents", "cron_jobs",
-            "services", "ideas", "project_info", "attachments",
+            "service_dependencies", "ideas", "project_info", "task_attachments",
             "task_notes_history", "outreach_contacts", "codebase_size_snapshots",
         }
     )

@@ -35,6 +35,7 @@ from rich.progress import Progress
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent))
 
+from scripts.addon_registry import enabled as enabled_addons, load as load_addon_part
 from scripts.config import (PROJECTS_BASE_DIR, local_config_path)
 from db.schema import init_db, get_db_path
 from db.manager import DatabaseManager
@@ -47,6 +48,7 @@ from discovery.project_scanner import (
 from discovery.external_resources_parser import parse_external_resources
 from discovery.graph_builder import GraphBuilder
 # update_directory_index removed — 00_Index generation killed (#5530)
+from commands.addons import addons_group  # noqa: E402
 from commands.backup import backup_group  # noqa: E402
 from commands.calendar import calendar_group  # noqa: E402
 from commands.common import (  # noqa: E402
@@ -75,8 +77,6 @@ from commands.memory import memory_group, _open_memory_db_readonly  # noqa: E402
 from commands.message import message_group  # noqa: E402
 from commands.record_run import record_run_group  # noqa: E402
 from commands.site_stats import site_stats_group  # noqa: E402
-from commands.reminders import reminders_group  # noqa: E402
-from commands.size import size_command  # noqa: E402
 from commands.skills import skills_group  # noqa: E402
 from commands.tasks import tasks_group  # noqa: E402
 from commands.worktrees import worktrees_group  # noqa: E402
@@ -1209,11 +1209,13 @@ cli.add_command(skills_group)
 cli.add_command(db_group)
 cli.add_command(handoff_group)
 cli.add_command(jobs_group)
-cli.add_command(size_command)
-cli.add_command(reminders_group)
 cli.add_command(record_run_group)
 cli.add_command(site_stats_group)
 cli.add_command(migration_group)
+cli.add_command(addons_group)
+for _addon in enabled_addons():
+    for _command in _addon.commands:
+        cli.add_command(load_addon_part(_command))
 
 def main() -> NoReturn:
     """Run the CLI and report database availability failures with the documented exit code."""

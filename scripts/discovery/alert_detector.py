@@ -80,26 +80,6 @@ def detect_cron_failures(projects: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     return alerts
 
 
-def detect_missing_index(projects: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Detect projects missing index files.
-
-    Note: 00_Index files were removed (Librarian system deleted).
-    This function now returns an empty list — index file checks
-    are no longer applicable.
-    """
-    return []
-
-
-def detect_invalid_frontmatter(projects: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Detect projects with invalid frontmatter. Disabled; returns [].
-
-    Note: 00_Index files were removed (Librarian system deleted).
-    This function now returns an empty list — frontmatter validation
-    is no longer applicable without index files.
-    """
-    return []
-
-
 def get_all_alerts(projects: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Get all alerts for all projects."""
     all_alerts = []
@@ -107,7 +87,6 @@ def get_all_alerts(projects: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     # Detect different types of issues
     all_alerts.extend(detect_cron_failures(projects))
     all_alerts.extend(detect_stalled_projects(projects))
-    all_alerts.extend(detect_missing_index(projects))  # Only missing, not incomplete
     # Sort by severity (critical first, then warning, then info)
     severity_order = {"critical": 0, "warning": 1, "info": 2}
     all_alerts.sort(key=lambda x: (severity_order.get(x["severity"], 3), x["project_name"]))

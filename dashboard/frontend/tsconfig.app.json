@@ -22,7 +22,14 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    /* Add-on pages (addons/<name>/frontend) import the core as @core, and
+       their bare imports resolve from this folder's node_modules. */
+    "paths": {
+      "@core/*": ["./src/*"],
+      "*": ["./node_modules/@types/*", "./node_modules/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "../../addons/*/frontend"]
 }

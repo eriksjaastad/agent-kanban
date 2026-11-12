@@ -5,12 +5,10 @@ import type {
   AgenticSummaryResponse,
   Attachment,
   BashStatsResponse,
-  CodebaseSizeReport,
   Idea,
   NavigationResponse,
   Project,
   Task,
-  TaskHistoryResponse,
   TaskPriority,
   TaskStatus,
   TaskType,
@@ -18,29 +16,6 @@ import type {
 } from './types';
 
 const API_BASE = '/api';
-
-async function codebaseSizeRequest(path: string, init?: RequestInit): Promise<CodebaseSizeReport> {
-  const response = await fetch(`${API_BASE}${path}`, init);
-  if (!response.ok) {
-    let detail = '';
-    try {
-      const body = await response.json();
-      if (typeof body?.detail === 'string') detail = body.detail;
-    } catch {
-      // Body was not JSON; the status line below is the message.
-    }
-    throw new Error(detail || `Codebase size request returned HTTP ${response.status}`);
-  }
-  return response.json();
-}
-
-export function fetchCodebaseSize(signal?: AbortSignal): Promise<CodebaseSizeReport> {
-  return codebaseSizeRequest('/codebase-size', { signal });
-}
-
-export function refreshCodebaseSize(signal?: AbortSignal): Promise<CodebaseSizeReport> {
-  return codebaseSizeRequest('/codebase-size/refresh', { method: 'POST', signal });
-}
 
 export interface TaskPolicyResponse {
   blocked_project_ids: string[];
@@ -340,30 +315,6 @@ export async function fetchNavigation(signal?: AbortSignal): Promise<NavigationR
       throw error;
     }
     throw new Error('Failed to fetch navigation');
-  }
-}
-
-export async function fetchTaskHistory(days: number = 30, projectId?: string, signal?: AbortSignal): Promise<TaskHistoryResponse> {
-  const params = new URLSearchParams();
-  params.append('days', days.toString());
-  if (projectId) params.append('project_id', projectId);
-
-  const url = `${API_BASE}/tasks/history?${params.toString()}`;
-
-  try {
-    const response = await fetchWithErrorHandling(url, { signal });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || errorData.detail || `Failed to fetch history: ${response.statusText}`);
-    }
-
-    return response.json();
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('Failed to fetch task history');
   }
 }
 

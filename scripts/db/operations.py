@@ -125,8 +125,12 @@ class ProjectTrackerOps(BackendDatabaseManager):
                 db._sync_ai_agents_with_cursor(
                     cursor=cursor, project_id=project["id"], agents=agents or []
                 )
+                # A scan adds and updates the crons it finds but never prunes:
+                # the scanner finds none, and `pt calendar add-cron` rows are
+                # not the scanner's to delete (#8983).
                 db._sync_cron_jobs_with_cursor(
-                    cursor=cursor, project_id=project["id"], cron_jobs=cron_jobs or []
+                    cursor=cursor, project_id=project["id"], cron_jobs=cron_jobs or [],
+                    allow_deletes=False,
                 )
                 db._sync_services_with_cursor(
                     cursor=cursor, project_id=project["id"], services=services or []

@@ -7,16 +7,13 @@ import os
 import re
 import sqlite3
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-
-from pt import cli  # noqa: E402
-from scripts import codebase_size as cs  # noqa: E402
+from addons.codebase_size import scanner as cs
+from pt import cli
 
 
 
@@ -110,9 +107,9 @@ def survey(repo: Path) -> tuple[int, int, int]:
 
 @pytest.fixture
 def mgr():
-    from db.manager import DatabaseManager
+    from addons.codebase_size.db import CodebaseSizeDB
 
-    return DatabaseManager()
+    return CodebaseSizeDB()
 
 
 @pytest.fixture
@@ -252,7 +249,7 @@ def test_score_none_without_usable_baseline() -> None:
 
 
 def test_score_text_never_shows_negative_zero():
-    from commands.size import _size_score_text
+    from addons.codebase_size.cli import _size_score_text
 
     assert _size_score_text(None) == "-"
     assert _size_score_text(-0.006) == "+0.0"

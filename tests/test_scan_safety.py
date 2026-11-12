@@ -434,3 +434,25 @@ def test_a_scan_whose_graph_rebuild_fails_exits_1_and_keeps_the_old_graph(scan_e
     else:
         pt._scan_impl(no_graph=False, dry_run=False, force=True)
         assert graph.read_text() != "old"
+
+
+def test_scan_keeps_cron_jobs_added_with_add_cron(scan_env, monkeypatch):
+    # #8983: the scanner never finds cron jobs, so a scan that pruned every cron
+    # it was not told about wiped each `pt calendar add-cron` row (2026-04-06).
+    schema, manager, pt = scan_env["schema"], scan_env["manager"], scan_env["pt"]
+    schema.init_db()
+    db = manager.DatabaseManager()
+    db.add_project(project_id="app", name="app", path="app", status="active")
+    from scripts.db.calendar_manager import CalendarManager
+    CalendarManager().add_cron_job("app", "0 */6 * * *", "backup.sh", "6-hourly backup")
+
+    app_dir = _make_project_dir(scan_env["base_dir"], "app")
+    found = _project_metadata(app_dir, "app")
+    found["cron_jobs"] = [{"schedule": "0 7 * * *", "command": "digest.sh", "description": "found by a scan"}]
+    monkeypatch.setattr(pt, "discover_projects", lambda *_a, **_k: [found])
+    monkeypatch.setattr(pt, "scan_health_parallel", lambda *_a, **_k: {})
+    monkeypatch.setattr(pt, "parse_external_resources", lambda: {})
+
+    pt._scan_impl(no_graph=True, dry_run=False, force=True)
+
+    assert sorted(j["command"] for j in db.get_cron_jobs("app")) == ["backup.sh", "digest.sh"]

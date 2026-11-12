@@ -4,18 +4,15 @@ from __future__ import annotations
 
 import os
 import sqlite3
-import sys
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-
-from dashboard.app import app  # noqa: E402
-from db.manager import DatabaseManager  # noqa: E402
-from scripts import codebase_size as cs  # noqa: E402
-from scripts.codebase_size import RepoSize  # noqa: E402
+from addons.codebase_size import scanner as cs
+from addons.codebase_size.db import CodebaseSizeDB
+from addons.codebase_size.scanner import RepoSize
+from dashboard.app import app
 
 LOCAL = TestClient(app)
 REMOTE = TestClient(app, client=("remote.example", 50000))
@@ -53,7 +50,7 @@ def test_get_with_no_runs_is_the_empty_state() -> None:
 
 
 def test_get_scores_latest_run_against_baseline() -> None:
-    db = DatabaseManager()
+    db = CodebaseSizeDB()
     db.save_codebase_scan([_repo("a", 80, 20), _repo("b", 50)], "2026-10-01")
     db.save_codebase_scan([_repo("a", 60, 20), _repo("b", 50), _repo("c", 10)], "2026-10-08")
 
@@ -155,7 +152,7 @@ def test_failed_refresh_is_500_and_stores_nothing(
 def test_both_runs_come_from_one_consistent_snapshot(monkeypatch, conn) -> None:
     # Force the race Codex found: a first run commits on another connection
     # between the baseline read and the latest-run read.
-    import db.codebase_size as storage
+    import addons.codebase_size.db as storage
 
     real_read = storage._read_run
     calls = []
@@ -163,12 +160,12 @@ def test_both_runs_come_from_one_consistent_snapshot(monkeypatch, conn) -> None:
     def read_then_commit_elsewhere(c, newest):
         result = real_read(c, newest)
         if not calls:
-            DatabaseManager().save_codebase_scan([_repo("a", 10)], "2026-10-08")
+            CodebaseSizeDB().save_codebase_scan([_repo("a", 10)], "2026-10-08")
         calls.append(newest)
         return result
 
     monkeypatch.setattr(storage, "_read_run", read_then_commit_elsewhere)
-    base_date, base, latest_date, latest = DatabaseManager().codebase_runs()
+    base_date, base, latest_date, latest = CodebaseSizeDB().codebase_runs()
     assert calls == [False, True]
     assert _runs(conn) == 1  # the concurrent run did commit
     # Both reads saw the snapshot from before it: no run on either side.
@@ -181,7 +178,7 @@ def test_both_runs_come_from_one_consistent_snapshot(monkeypatch, conn) -> None:
 
 
 def test_overlapping_refresh_is_refused_with_409_and_stores_nothing(monkeypatch, conn) -> None:
-    import dashboard.routes.agentic as app_module
+    import addons.codebase_size.routes as app_module
 
     _scan_returns(monkeypatch, [_repo("a", 10)])
     assert app_module._codebase_refresh_lock.acquire(blocking=False)

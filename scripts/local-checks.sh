@@ -114,13 +114,14 @@ npm_ci_offline() {
 }
 
 if check "sync test dependencies" "$UV" sync -q --extra test --python 3.13; then
-    step "pytest" "$UV" run --no-sync --python 3.13 python -m pytest tests/ -q -p no:cacheprovider
+    step "pytest" "$UV" run --no-sync --python 3.13 python -m pytest tests/ addons/ -q -p no:cacheprovider
 fi
 
 # The frontend job runs on every push, as tests.yml ran it on every PR.
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-git archive "$sha" dashboard | tar -x -C "$tmp"
+# addons/ too: add-on pages build, lint and test with the frontend (#9002).
+git archive "$sha" dashboard addons | tar -x -C "$tmp"
 frontend="$tmp/dashboard/frontend"
 want="$(cat "$frontend/.nvmrc")"
 have="$(node --version | sed 's/^v//; s/\..*//')"

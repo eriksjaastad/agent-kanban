@@ -6,7 +6,7 @@ import { RemindersPage } from './RemindersPage';
 
 globalThis.fetch = vi.fn() as typeof fetch;
 
-vi.mock('./PageShell', () => ({
+vi.mock('@core/components/PageShell', () => ({
   PageShell: ({ children, title }: { children: React.ReactNode; title: string }) => (
     <div>
       <h1>{title}</h1>
@@ -15,11 +15,11 @@ vi.mock('./PageShell', () => ({
   ),
 }));
 
-vi.mock('./Spinner', () => ({
+vi.mock('@core/components/Spinner', () => ({
   Spinner: () => <div>Loading...</div>,
 }));
 
-vi.mock('./Notification', () => ({
+vi.mock('@core/components/Notification', () => ({
   Notification: ({ message }: { message: string }) => <div role="alert">{message}</div>,
 }));
 

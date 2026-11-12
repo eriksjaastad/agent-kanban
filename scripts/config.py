@@ -135,6 +135,11 @@ DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 #   fit_keywords = ["python"]         # optional: words that raise a listing's fit
 #                                     #   score (see scripts/db/job_ranking.py); none
 #                                     #   means no fit boost
+#
+#   [addons]                          # add-ons in addons/ are on unless listed here
+#   disabled = ["reminders"]          # written by `pt addons enable/disable`;
+#                                     #   their commands and pages are hidden,
+#                                     #   their data stays
 
 
 def local_config_path() -> Path:
@@ -393,6 +398,21 @@ def graph_settings(data: dict | None = None) -> tuple[frozenset[str], frozenset[
         raise ValueError(f"{path}: [graph] skip_dirs and ignore_projects must be lists of names "
                          "without surrounding spaces")
     return frozenset(lists[0]), frozenset(lists[1])
+
+
+def disabled_addons(data: dict | None = None) -> frozenset[str]:
+    """[addons] disabled (data, as for memory_integration): add-ons that stay off.
+
+    Empty when unset. Invalid values raise.
+    """
+    path = local_config_path()
+    section = (local_config() if data is None else data).get("addons", {})
+    if not isinstance(section, dict) or not set(section) <= {"disabled"}:
+        raise ValueError(f"{path}: [addons] may only set disabled")
+    names = section.get("disabled", [])
+    if not (isinstance(names, list) and all(isinstance(n, str) and n and n == n.strip() for n in names)):
+        raise ValueError(f"{path}: [addons] disabled must be a list of add-on names without surrounding spaces")
+    return frozenset(names)
 
 
 def user_facing_projects(data: dict | None = None) -> frozenset[str]:

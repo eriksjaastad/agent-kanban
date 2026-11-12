@@ -4,13 +4,14 @@ import sqlite3
 from typing import Any, Callable, Optional
 
 import click
-from db.manager import DatabaseManager
+
+from addons.reminders.db import RemindersDB
 
 
-def _reminders(call: Callable[["DatabaseManager"], Any]) -> Any:
+def _reminders(call: Callable[[RemindersDB], Any]) -> Any:
     """Run one reminders call; a database without migration 022 says how to fix it."""
     try:
-        return call(DatabaseManager())
+        return call(RemindersDB())
     except sqlite3.OperationalError as exc:
         if "no such table" in str(exc):
             raise click.ClickException("table reminders is missing; run `pt db migrate`") from exc

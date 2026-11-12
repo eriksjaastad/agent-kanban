@@ -76,6 +76,7 @@ Every group has `--help` with examples; most read commands take `--json`.
 - `pt backup`: check that backups are recent, take one, or restore from one.
 - `pt db migrate`: apply schema migrations after an update.
 - `pt config show --effective`: what is configured, and from where.
+- `pt addons`: list the optional features in `addons/` (Reminders and Codebase size so far), and turn one off or back on; turning one off keeps its data.
 - `pt doctor`: check whether this install works for a non-interactive caller such as an agent (`--json` for scripts).
 
 **Need parts that are not in this repo (not included yet)**

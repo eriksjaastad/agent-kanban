@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchCodebaseSize, isAbortError, refreshCodebaseSize } from '../api';
-import type { CodebaseSizeReport } from '../types';
-import { PageShell } from './PageShell';
+import { isAbortError } from '@core/api';
+import { PageShell } from '@core/components/PageShell';
+import { fetchCodebaseSize, refreshCodebaseSize } from './api';
+import type { CodebaseSizeReport } from './api';
 import './CodebasePage.css';
 
 const MINUS = '−';
