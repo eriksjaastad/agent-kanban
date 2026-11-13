@@ -26,7 +26,7 @@ def test_pt_lists_reminders_and_runs_its_commands() -> None:
     assert CliRunner().invoke(cli, ["reminders", "--help"], env=ENV).exit_code == 0
 
 
-def test_reminders_is_a_top_level_tab_on_spa_and_document_pages() -> None:
+def test_reminders_is_a_top_level_tab() -> None:
     assert client.get("/api/reminders").status_code == 200
     # 503 when the frontend is not built, as in a fresh worktree; 404 if unregistered.
     assert client.get("/reminders").status_code in (200, 503)
@@ -35,8 +35,6 @@ def test_reminders_is_a_top_level_tab_on_spa_and_document_pages() -> None:
         "Reminders", "/reminders", "spa")
     leaf = next(i for i in iter_navigation_leaves(build_navigation("/reminders")) if i["id"] == "reminders")
     assert leaf["active"]
-    # The Jinja shell (/memory, /graph) renders the same top-level tab.
-    assert 'href="/reminders"' in client.get("/graph").text
 
 
 # Commands, routes and the menu are read once at startup, so each check below

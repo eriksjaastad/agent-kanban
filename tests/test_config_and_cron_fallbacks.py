@@ -100,20 +100,6 @@ def test_resources_file_honors_pt_resources_file_override(monkeypatch, tmp_path,
     assert synthetic.EXTERNAL_RESOURCES_FILE.resolve() == registry.resolve()
 
 
-def test_graph_builder_uses_bundled_scan_config_without_warning(caplog):
-    import scripts.discovery.graph_builder as graph_builder
-
-    with caplog.at_level(logging.WARNING):
-        reloaded = importlib.reload(graph_builder)
-
-    assert reloaded.CONFIG_PATH == reloaded.Path(__file__).resolve().parents[1] / "config" / "scan_config.yaml"
-    assert reloaded.CONFIG_PATH.exists()
-    assert reloaded.SCAN_EXTENSIONS[".py"] == "python"
-    assert reloaded.ORPHAN_EXEMPT_PROJECTS == {"root"}
-    assert "project-scaffolding" not in str(reloaded.CONFIG_PATH)
-    assert "Config not found" not in caplog.text
-
-
 def test_is_valid_cron_accepts_special_alias_without_croniter(monkeypatch):
     monkeypatch.setattr(cron_monitor, "croniter", None)
 

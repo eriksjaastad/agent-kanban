@@ -11,13 +11,14 @@ How to Use:
    python scripts/pt.py [command]
 
 Common Commands:
-- pt scan      # Scan for new projects and rebuild graph
+- pt scan      # Scan for new projects
 - pt launch    # Start the web dashboard
 - pt list      # List all projects in terminal
 - pt --help    # Show help
 """
 
 import copy
+import importlib
 import os
 import sys
 import webbrowser
@@ -36,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent))
 
 from scripts.addon_registry import enabled as enabled_addons, load as load_addon_part
-from scripts.config import (PROJECTS_BASE_DIR, local_config_path)
+from scripts.config import (PROJECTS_BASE_DIR, local_config_path, module_present)
 from db.schema import init_db, get_db_path
 from db.manager import DatabaseManager
 from db.checkouts import MACHINE_LABELS, CheckoutsMigrationPendingError, ProjectCheckedOut
@@ -46,7 +47,6 @@ from discovery.project_scanner import (
     scan_health_parallel,
 )
 from discovery.external_resources_parser import parse_external_resources
-from discovery.graph_builder import GraphBuilder
 # update_directory_index removed — 00_Index generation killed (#5530)
 from commands.addons import addons_group  # noqa: E402
 from commands.backup import backup_group  # noqa: E402
@@ -56,6 +56,7 @@ from commands.common import (  # noqa: E402
     console,
     _emit_json,
     _emit_json_error,
+    _open_memory_db_readonly,
     EXIT_BACKEND_UNAVAILABLE,
     EXIT_HYGIENE_FINDING,
     EXIT_VALIDATION,
@@ -69,21 +70,19 @@ from commands.common import (  # noqa: E402
 )
 from commands.config import config_group, _effective_config_payload  # noqa: E402
 from commands.db import db_group  # noqa: E402
-from commands.graph import graph_group  # noqa: E402
 from commands.handoff import handoff_group  # noqa: E402
 from commands.info import info_group  # noqa: E402
 from commands.jobs import jobs_group  # noqa: E402
-from commands.memory import memory_group, _open_memory_db_readonly  # noqa: E402
 from commands.message import message_group  # noqa: E402
 from commands.record_run import record_run_group  # noqa: E402
 from commands.site_stats import site_stats_group  # noqa: E402
-from commands.skills import skills_group  # noqa: E402
 from commands.tasks import tasks_group  # noqa: E402
 from commands.worktrees import worktrees_group  # noqa: E402
 from commands.migration import (  # noqa: E402
     _audit_destructive,
     migration_group,
 )
+from commands.morning import morning_cmd  # noqa: E402
 
 
 def _resolve_project_directory(project_name: str) -> Optional[Path]:
@@ -201,6 +200,8 @@ def _load_external_services() -> dict:
         raise SystemExit(1)
 
 
+# Whether this install has a graph builder; the graph flags and help show only if so.
+HAS_GRAPH = module_present("discovery.graph_builder")
 GRAPH_PATH = Path(__file__).parent.parent / "data" / "graph.json"
 GRAPH_ANALYSIS_PATH = Path(__file__).parent.parent / "data" / "graph_analysis.md"
 
@@ -212,6 +213,8 @@ def rebuild_project_graph():
     and the CLI commands exit 1 (_rebuild_graph_or_exit). The old graph is
     left as it was.
     """
+    from discovery.graph_builder import GraphBuilder
+
     console.print("[bold blue]Rebuilding project graph & analysis...[/bold blue]")
     builder = GraphBuilder(Path(PROJECTS_BASE_DIR))
     builder.scan()
@@ -221,7 +224,12 @@ def rebuild_project_graph():
 
 
 def _rebuild_graph_or_exit():
-    """rebuild_project_graph() for a CLI command: a failure is printed and exits 1."""
+    """rebuild_project_graph() for a CLI command: a failure is printed and exits 1.
+
+    Does nothing when the graph builder is not part of this install (see module_present).
+    """
+    if not module_present("discovery.graph_builder"):
+        return
     try:
         rebuild_project_graph()
     except Exception as e:
@@ -342,17 +350,21 @@ def init():
 
 
 @cli.command(name="scan")
-@click.option("--no-graph", is_flag=True, help="Skip rebuilding the project graph")
+@click.option("--no-graph", is_flag=True, hidden=not HAS_GRAPH, help="Skip rebuilding the project graph")
 @click.option("--dry-run", is_flag=True, help="Show what would change without writing")
 @click.option("--force", is_flag=True, help="Proceed even if scan results look unsafe")
 def scan_cli(no_graph, dry_run, force):
     """Scan the projects directory and update the database.
 
-    Rescans every repo under PROJECTS_ROOT and rebuilds the project graph
-    (skip that with --no-graph). For a single project, `pt sync-project NAME`
-    is faster.
+    Rescans every repo under PROJECTS_ROOT. For a single project,
+    `pt sync-project NAME` is faster.
     """
     _scan_impl(no_graph=no_graph, dry_run=dry_run, force=force)
+
+
+if HAS_GRAPH:
+    scan_cli.help = scan_cli.help.replace(
+        "PROJECTS_ROOT.", "PROJECTS_ROOT and rebuilds the project graph (skip that with --no-graph).", 1)
 
 
 # `pt refresh` is the old spelling of `pt scan`: the same command object under a
@@ -422,7 +434,7 @@ def status(name):
 
 @cli.command(name="sync-project")
 @click.argument("project_name")
-@click.option("--no-graph", is_flag=True, help="Skip rebuilding the project graph")
+@click.option("--no-graph", is_flag=True, hidden=not HAS_GRAPH, help="Skip rebuilding the project graph")
 def sync_project(project_name, no_graph):
     """Sync one project to the database (fast alternative to full scan).
 
@@ -750,7 +762,7 @@ def launch(port, no_scan, reload):
     console.print("[bold green]Launching Project Tracker Dashboard...[/bold green]\n")
     init_db()
     if not no_scan:
-        console.print("[dim]Running quick scan (graph rebuild deferred to background)...[/dim]")
+        console.print("[dim]Running quick scan" + (" (graph rebuild deferred to background)" if HAS_GRAPH else "") + "...[/dim]")
         _scan_impl(no_graph=True)
     else:
         console.print("[yellow]Skipping initial scan. Using existing data.[/yellow]")
@@ -1147,30 +1159,32 @@ def doctor(json_output: bool) -> None:
         "ok": config["ok"],
         "detail": config["local_config_error"] or config["local_config_path"],
     })
-    memory_ok, memory_db = False, config["memory_db_path"]
-    if memory_db:
-        try:
-            with _open_memory_db_readonly(Path(memory_db)) as conn:
-                conn.execute("SELECT COUNT(*) FROM thoughts").fetchone()
-            memory_ok, memory_detail = True, memory_db
-        except PtJsonError as exc:
-            memory_detail = exc.message
-    elif config["local_config_error"]:
-        # Whether memory is configured can't be told from a file that fails to load.
-        memory_detail = f"not checked: {config['local_config_error']}"
-    else:
-        # An optional integration that is off is not a failure.
-        memory_ok, memory_detail = True, f"not configured (optional; see {local_config_path()})"
-    checks.append({
-        "name": "memory_readonly",
-        "ok": memory_ok,
-        "detail": memory_detail,
-    })
-    checks.append({
-        "name": "non_interactive_json",
-        "ok": True,
-        "detail": "memory search/recent/stats/export support read-only JSON/NDJSON without Doppler",
-    })
+    has_memory = module_present("commands.memory")
+    if has_memory:
+        memory_ok, memory_db = False, config["memory_db_path"]
+        if memory_db:
+            try:
+                with _open_memory_db_readonly(Path(memory_db)) as conn:
+                    conn.execute("SELECT COUNT(*) FROM thoughts").fetchone()
+                memory_ok, memory_detail = True, memory_db
+            except PtJsonError as exc:
+                memory_detail = exc.message
+        elif config["local_config_error"]:
+            # Whether memory is configured can't be told from a file that fails to load.
+            memory_detail = f"not checked: {config['local_config_error']}"
+        else:
+            # An optional integration that is off is not a failure.
+            memory_ok, memory_detail = True, f"not configured (optional; see {local_config_path()})"
+        checks.append({
+            "name": "memory_readonly",
+            "ok": memory_ok,
+            "detail": memory_detail,
+        })
+        checks.append({
+            "name": "non_interactive_json",
+            "ok": True,
+            "detail": "memory search/recent/stats/export support read-only JSON/NDJSON without Doppler",
+        })
     ok = all(check["ok"] for check in checks)
     payload = {
         "schema_version": PT_DOCTOR_SCHEMA_VERSION,
@@ -1179,7 +1193,8 @@ def doctor(json_output: bool) -> None:
         "checks": checks,
         "cron_setup": {
             "recommended_path": f"{project_root / 'pt'}",
-            "example": f"cd {project_root} && pt memory recent --since 7d --json",
+            "example": f"cd {project_root} && pt "
+            + ("memory recent --since 7d --json" if has_memory else "tasks --json"),
         },
     }
     if json_output:
@@ -1199,13 +1214,11 @@ def doctor(json_output: bool) -> None:
 cli.add_command(backup_group)
 cli.add_command(tasks_group)
 cli.add_command(calendar_group)
-cli.add_command(memory_group)
-cli.add_command(graph_group)
+cli.add_command(morning_cmd)
 cli.add_command(worktrees_group)
 cli.add_command(info_group)
 cli.add_command(config_group)
 cli.add_command(message_group)
-cli.add_command(skills_group)
 cli.add_command(db_group)
 cli.add_command(handoff_group)
 cli.add_command(jobs_group)
@@ -1213,6 +1226,24 @@ cli.add_command(record_run_group)
 cli.add_command(site_stats_group)
 cli.add_command(migration_group)
 cli.add_command(addons_group)
+
+
+# Command groups that exist only where their module's file does. A module that is
+# present but broken still raises its ImportError here; only absence skips it.
+OPTIONAL_COMMAND_GROUPS = (
+    ("commands.memory", "memory_group"),
+    ("commands.graph", "graph_group"),
+    ("commands.skills", "skills_group"),
+)
+
+
+def register_optional_commands(group, present=module_present) -> None:
+    for module_name, attribute in OPTIONAL_COMMAND_GROUPS:
+        if present(module_name):
+            group.add_command(getattr(importlib.import_module(module_name), attribute))
+
+
+register_optional_commands(cli)
 for _addon in enabled_addons():
     for _command in _addon.commands:
         cli.add_command(load_addon_part(_command))

@@ -4,10 +4,13 @@ The owner sees Discord, not email. The dashboard is the always-running process, 
 it checks every 30 seconds and posts '<title> (<project>) now, until HH:MM'
 once per block. Sent blocks are kept in data/block_pings.json, so a restart
 never sends one twice; a block already 10 minutes old when first seen is
-skipped rather than announced late. The webhook is PT_DISCORD_WEBHOOK in
-Doppler (project-tracker/dev), read at send time because the dashboard runs
-without Doppler. One attempt per block: a failure is logged at ERROR and the
-block is marked done, so a broken webhook cannot post or log every 30 seconds.
+skipped rather than announced late. A Discord bot posts it to the channel named
+in the local config's [discord] section (scripts/config.py); the bot token comes
+from the Doppler secret that section names, read at send time because the
+dashboard runs without Doppler. A message counts as sent only when Discord
+answers 200/201 with the new message's id and that channel. One attempt per
+block: a failure is logged at ERROR (never with the token) and the block is
+marked done, so a broken bot cannot post or log every 30 seconds.
 """
 
 import json
@@ -21,6 +24,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from dashboard.common import logger
+from scripts.config import DISCORD_NOT_CONFIGURED, discord_integration, local_config_path
 
 SENT_FILE = Path(__file__).resolve().parent.parent / "data" / "block_pings.json"
 LATE = timedelta(minutes=10)
@@ -32,20 +36,35 @@ def message(block: dict) -> str:
     return f"{block['title']}{project} now, until {block['end']:%H:%M}"
 
 
-def webhook() -> str:
-    """The webhook URL from Doppler; raises when Doppler or the secret is missing."""
-    return subprocess.run(
-        ["doppler", "secrets", "get", "PT_DISCORD_WEBHOOK", "--plain",
-         "--project", "project-tracker", "--config", "dev"],
-        capture_output=True, text=True, timeout=20, check=True).stdout.strip()
+def bot_token(discord) -> str:
+    """The bot token from Doppler; raises when Doppler or the secret is missing."""
+    try:
+        return subprocess.run(
+            ["doppler", "secrets", "get", discord.token_secret, "--plain",
+             "--project", discord.doppler_project, "--config", discord.doppler_config],
+            capture_output=True, text=True, timeout=20, check=True).stdout.strip()
+    except subprocess.CalledProcessError as exc:  # its message would carry the command's output
+        raise RuntimeError(f"doppler could not read {discord.token_secret} (exit {exc.returncode})") from None
 
 
 def post(text: str) -> None:
+    discord = discord_integration()
+    if discord is None:
+        raise RuntimeError(DISCORD_NOT_CONFIGURED.format(path=local_config_path()))
     request = urllib.request.Request(
-        webhook(), data=json.dumps({"content": text}).encode(), method="POST",
-        headers={"Content-Type": "application/json", "User-Agent": "pt-dashboard"})
-    with urllib.request.urlopen(request, timeout=10):
-        pass
+        f"https://discord.com/api/v10/channels/{discord.channel_id}/messages",
+        data=json.dumps({"content": text, "allowed_mentions": {"parse": []}}).encode(), method="POST",
+        headers={"Content-Type": "application/json", "Authorization": f"Bot {bot_token(discord)}",
+                 "User-Agent": "DiscordBot (https://github.com/eriksjaastad/project-tracker, 1.0)"})
+    with urllib.request.urlopen(request, timeout=10) as response:
+        status, body = response.status, response.read()
+    try:
+        reply = json.loads(body)
+    except ValueError:
+        reply = None
+    if not (status in (200, 201) and isinstance(reply, dict) and reply.get("id")
+            and reply.get("channel_id") == discord.channel_id):
+        raise RuntimeError(f"Discord did not confirm the message (HTTP {status})")
 
 
 def check(now: datetime, current: Optional[dict], send: Callable[[str], None] = post,

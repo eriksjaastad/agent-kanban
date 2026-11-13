@@ -11,12 +11,14 @@ from scripts.config import (
     PROJECTS_BASE_DIR,
     chat_addresses,
     digest_integration,
+    discord_integration,
     fit_keywords,
     graph_settings,
     user_facing_projects,
     local_config,
     local_config_path,
     memory_integration,
+    module_present,
     morning_integration,
     tailor_rules,
 )
@@ -33,6 +35,7 @@ def _effective_config_payload() -> dict:
         integration = memory_integration(data)
         chat_addresses(data)
         digest_integration(data)
+        discord_integration(data)
         morning_integration(data)
         tailor_rules(data)
         fit_keywords(data)
@@ -40,28 +43,31 @@ def _effective_config_payload() -> dict:
         user_facing_projects(data)
     except ValueError as exc:
         config_error = str(exc)
-    override = os.environ.get("PT_MEMORY_DB_PATH")
-    if override:
-        memory_db = Path(override).expanduser()
-    else:
-        memory_db = integration.brain_db if integration else None
-    return {
+    payload = {
         "schema_version": PT_CONFIG_SCHEMA_VERSION,
         "ok": config_error is None,
         "local_config_error": config_error,
         "project_root": str(Path(__file__).resolve().parents[2]),
         "projects_root": str(PROJECTS_BASE_DIR),
         "tracker_db_path": str(get_db_path()),
-        "memory_db_path": str(memory_db) if memory_db else None,
         "local_config_path": str(local_config_path()),
         "backend": "local",
         "env": {
             "PT_DB_PATH": os.environ.get("PT_DB_PATH"),
-            "PT_MEMORY_DB_PATH": os.environ.get("PT_MEMORY_DB_PATH"),
             "PROJECTS_ROOT": os.environ.get("PROJECTS_ROOT"),
             "PT_NO_BANNER": os.environ.get("PT_NO_BANNER"),
         },
     }
+    # The store's path and its override are reported only where the store's command exists.
+    if module_present("commands.memory"):
+        override = os.environ.get("PT_MEMORY_DB_PATH")
+        if override:
+            memory_db = Path(override).expanduser()
+        else:
+            memory_db = integration.brain_db if integration else None
+        payload["memory_db_path"] = str(memory_db) if memory_db else None
+        payload["env"]["PT_MEMORY_DB_PATH"] = override
+    return payload
 
 
 @click.group(name="config", invoke_without_command=True)

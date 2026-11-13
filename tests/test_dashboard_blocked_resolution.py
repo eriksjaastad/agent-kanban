@@ -43,7 +43,7 @@ def _blocked_view(db, task_id, monkeypatch):
     wrong, which is the failure this file exists to prevent.
 
     The handler is invoked directly rather than through TestClient as a context
-    manager: that runs the app lifespan, which rebuilds the project graph and
+    manager: that runs the app lifespan, which can rebuild in the background and
     scans the filesystem — it made unrelated hygiene tests fail intermittently
     and added a minute to the suite.
     """

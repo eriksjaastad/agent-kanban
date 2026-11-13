@@ -79,18 +79,11 @@ Every group has `--help` with examples; most read commands take `--json`.
 - `pt addons`: list the optional features in `addons/` (Reminders and Codebase size so far), and turn one off or back on; turning one off keeps its data.
 - `pt doctor`: check whether this install works for a non-interactive caller such as an agent (`--json` for scripts).
 
-**Need parts that are not in this repo (not included yet)**
-
-- `pt memory`, `pt graph` and `pt skills`: search, write and analyse a shared agent memory store. See `[memory]` below.
-- `pt message`: send and read messages between agents. See `[chat]` below.
-- `pt site-stats`: website stats from a central collector, which is not in this repo.
-
 ## Optional integrations
 
 Anything beyond the board is off until you turn it on in a private config file, `~/.config/project-tracker/config.toml` (or `$PT_CONFIG`). A section that is absent turns its integration off, and the commands that need it say so. A section that is wrong is an error naming the file. Every key is documented under "Local integrations" in [`scripts/config.py`](scripts/config.py).
 
-- **`[memory]`, used daily, not included yet.** `pt memory`, `pt graph` and `pt skills` do not hold memory themselves. They run a separate memory store's `brain.py`, found at the section's `root`, over its `brain.db`, optionally under a Doppler project the section names. That store is its own project and is not in this repo yet, so without it these commands say memory is off.
-- **`[chat]`, used daily, not included yet.** `pt message` is a client for an Agent Chat server, which is not in this repo yet. The server's URL and key come from `~/.claude/agent-chat.env` or the environment. The section only adds recipient addresses beyond your projects.
+- **`[chat]`, used daily.** `pt message` is a client for an Agent Chat server. The server's URL and key come from `~/.claude/agent-chat.env` or the environment. The section only adds recipient addresses beyond your projects.
 - **`[digest]`, used daily.** A daily alert email (`scripts/alert_digest.py`) listing failed scheduled jobs and due or missed calendar events. It needs an email-sending account.
 - **`[jobs]`, used weekly.** House rules for the Jobs page's tailor-resume prompt.
 

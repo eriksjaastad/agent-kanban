@@ -1,4 +1,4 @@
-// Dropdown behaviour for the Jinja nav (document pages such as /graph and /memory).
+// Dropdown behaviour for the Jinja nav (document pages).
 // Mirrors the React nav in dashboard/frontend/src/components/Navigation.tsx.
 (function () {
   'use strict';

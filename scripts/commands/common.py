@@ -422,3 +422,25 @@ def _caller_repo_root() -> Path:
         return caller
     top = stdout.strip()
     return Path(top) if top else caller
+
+
+def _open_memory_db_readonly(db_path: Path) -> sqlite3.Connection:
+    if not db_path.exists():
+        raise PtJsonError(
+            "backend_unavailable",
+            f"memory database not found at {db_path}",
+            EXIT_BACKEND_UNAVAILABLE,
+        )
+    # The memory store owns this source; pt only reads it.
+    try:
+        uri = f"file:{db_path}?mode=ro"
+        conn = sqlite3.connect(uri, uri=True)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA query_only = ON")
+        return conn
+    except sqlite3.Error as exc:
+        raise PtJsonError(
+            "backend_unavailable",
+            f"could not open memory database read-only: {exc}",
+            EXIT_BACKEND_UNAVAILABLE,
+        ) from exc

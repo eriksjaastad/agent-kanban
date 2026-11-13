@@ -111,9 +111,17 @@ export function AgenticDashboard() {
   }, [timeRange, selectedProject]);
 
   const statsDays = timeRange === 'week' ? 7 : 30;
-  const toolRequest = useRequest(signal => fetchToolStats(statsDays, undefined, signal), [statsDays]);
+  // The tool and Bash charts exist only where the server installs their routes (summary.usage_stats).
+  const usageStats = summary?.usage_stats === true;
+  const toolRequest = useRequest(
+    signal => (usageStats ? fetchToolStats(statsDays, undefined, signal) : Promise.resolve(null)),
+    [statsDays, usageStats],
+  );
   const toolStats = toolRequest.data;
-  const bashRequest = useRequest(signal => fetchBashStats(statsDays, signal), [statsDays]);
+  const bashRequest = useRequest(
+    signal => (usageStats ? fetchBashStats(statsDays, signal) : Promise.resolve(null)),
+    [statsDays, usageStats],
+  );
   const bashStats = bashRequest.data;
 
   const projectChartData = useMemo(() => {
@@ -368,6 +376,8 @@ export function AgenticDashboard() {
           </>
         )}
 
+        {usageStats && (
+        <>
         {/* WebSearch frequency chart */}
         <section className="agentic-chart">
           <div className="chart-header">
@@ -537,6 +547,9 @@ export function AgenticDashboard() {
           )}
         </section>
 
+        </>
+        )}
+
         {/* Marker management — always rendered, independent of chart loading */}
         <section className="agentic-markers">
           <h2>Workflow Markers</h2>
@@ -671,7 +684,7 @@ export function AgenticDashboard() {
             <li>Metrics are based on status transitions in task_history.</li>
             <li>Bounce rate is a proxy for autonomy reliability, not a perfect first-pass metric.</li>
             <li>Future: split by agent vs manual tasks, and add per-project trend comparisons.</li>
-            <li>Future: Mac Mini sessions will write auto markers once brain.db is hosted.</li>
+            <li>Future: Mac Mini sessions will write auto markers.</li>
           </ul>
         </section>
       </div>

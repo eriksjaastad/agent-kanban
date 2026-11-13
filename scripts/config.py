@@ -6,6 +6,7 @@ SAFETY NOTES:
 - See Task #4692 for the history of database location confusion
 """
 
+import importlib.util
 import os
 import sys
 import tomllib
@@ -86,15 +87,6 @@ DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 # off, and the commands that need it say so. A file that exists but can't be
 # read or parsed raises, so a typo never turns an integration off silently.
 #
-#   [memory]                          # a brain.py + brain.db memory store
-#   root = "~/path/to/memory-store"   # directory holding brain.py and brain.db;
-#                                     #   a relative root is relative to this file
-#   doppler_project = "memory"        # optional: run brain.py under doppler run
-#   doppler_config = "dev"            #   --project/--config (both or neither)
-#   build_receipt = "logs/build.json" # optional: the graph build's JSON receipt,
-#                                     #   relative to root, for the dashboard
-#   build_schedule = "Mondays 10:00"  # optional: when that build runs, as shown
-#
 #   [chat]                            # Agent Chat (pt message)
 #   addresses = ["architect", "me"]   # names a message may go to besides the
 #                                     #   tracked projects: agents and people; a bare
@@ -123,11 +115,6 @@ DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 #                                     #   this file; read only by the page, which
 #                                     #   reports a missing or unreadable file
 #
-#   [graph]                           # the project graph (scripts/discovery/graph_builder.py)
-#   skip_dirs = ["scratch"]           # optional: directory names to skip, beside the
-#                                     #   generic ones in config/scan_config.yaml
-#   ignore_projects = ["writing"]     # optional: projects the graph leaves out entirely
-#
 #   [jobs]                            # the dashboard's Jobs page
 #   tailor_rules = "tailor-rules.md"  # optional: house rules for the tailor-resume
 #                                     #   prompt, placed like [morning] readme;
@@ -136,10 +123,26 @@ DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 #                                     #   score (see scripts/db/job_ranking.py); none
 #                                     #   means no fit boost
 #
+#   [discord]                         # focus-block pings (dashboard/block_ping.py),
+#   channel_id = "123456789012345678" #   posted by a Discord bot; all four required:
+#   doppler_project = "bots"          #   the channel's id (digits), and where the bot
+#   doppler_config = "prd"            #   token lives in Doppler (read at send time)
+#   token_secret = "DISCORD_BOT_TOKEN"
+#
 #   [addons]                          # add-ons in addons/ are on unless listed here
 #   disabled = ["reminders"]          # written by `pt addons enable/disable`;
 #                                     #   their commands and pages are hidden,
 #                                     #   their data stays
+
+
+def module_present(name: str) -> bool:
+    """Whether the module's file exists, without importing it.
+
+    Optional parts (the public build leaves some modules out) register only when this
+    is true. A module that is present but fails to import still raises where it is
+    imported: an import error is never taken for absence.
+    """
+    return importlib.util.find_spec(name) is not None
 
 
 def local_config_path() -> Path:
@@ -148,7 +151,7 @@ def local_config_path() -> Path:
     Only tests set PT_CONFIG, always to an absolute path, so that is the one form
     accepted: local_config() refuses any other. Never raises and reads nothing,
     so it is safe in messages and diagnostics. Every failure to load the config
-    is a ValueError from local_config() or memory_integration() that names the file.
+    is a ValueError from local_config() or an integration accessor that names the file.
     """
     # governance: allow-silent SF003: PT_CONFIG is optional; empty means the default path
     override = os.environ.get("PT_CONFIG", "").strip()
@@ -226,8 +229,42 @@ def memory_integration(data: dict | None = None) -> MemoryIntegration | None:
                              values["build_receipt"], values["build_schedule"])
 
 
+@dataclass(frozen=True)
+class DiscordIntegration:
+    """The channel a Discord bot posts focus-block pings to, and where its token is kept."""
+
+    channel_id: str
+    doppler_project: str
+    doppler_config: str
+    token_secret: str
+
+
+DISCORD_NOT_CONFIGURED = (
+    "Discord is not configured: add a [discord] section with channel_id, doppler_project, "
+    "doppler_config and token_secret to {path}"
+)
+
+
+def discord_integration(data: dict | None = None) -> DiscordIntegration | None:
+    """The [discord] section (data, an already-loaded local_config()), or None when it is absent. Invalid values raise."""
+    path = local_config_path()
+    section = (local_config() if data is None else data).get("discord")
+    if section is None:
+        return None
+    keys = ("channel_id", "doppler_project", "doppler_config", "token_secret")
+    if not isinstance(section, dict) or not set(section) <= set(keys):
+        raise ValueError(f"{path}: [discord] may only set {', '.join(keys)}")
+    values = [section.get(key) for key in keys]
+    if not all(isinstance(v, str) and v and v == v.strip() for v in values):
+        raise ValueError(f"{path}: [discord] {', '.join(keys)} are all required non-empty strings "
+                         "without surrounding spaces")
+    if not (values[0].isascii() and values[0].isdigit()):
+        raise ValueError(f"{path}: [discord] channel_id must be digits only")
+    return DiscordIntegration(*values)
+
+
 def chat_addresses(data: dict | None = None) -> set[str]:
-    """[chat] addresses from the local config (data, as for memory_integration), or an empty set.
+    """[chat] addresses from the local config (data, an already-loaded local_config()), or an empty set.
 
     Invalid values raise.
     """
@@ -264,7 +301,7 @@ DIGEST_NOT_CONFIGURED = (
 
 
 def digest_integration(data: dict | None = None) -> DigestIntegration | None:
-    """The [digest] section (data, as for memory_integration), or None when it is absent. Invalid values raise."""
+    """The [digest] section (data, an already-loaded local_config()), or None when it is absent. Invalid values raise."""
     path = local_config_path()
     section = (local_config() if data is None else data).get("digest")
     if section is None:
@@ -318,7 +355,7 @@ MORNING_NOT_CONFIGURED = (
 
 
 def morning_integration(data: dict | None = None) -> MorningIntegration | None:
-    """The [morning] section (data, as for memory_integration), or None when it is absent. Invalid values raise."""
+    """The [morning] section (data, an already-loaded local_config()), or None when it is absent. Invalid values raise."""
     path = local_config_path()
     section = (local_config() if data is None else data).get("morning")
     if section is None:
@@ -344,7 +381,7 @@ def _jobs_section(path: Path, data: dict | None) -> dict:
 
 
 def tailor_rules(data: dict | None = None) -> str | None:
-    """[jobs] tailor_rules (data, as for memory_integration), placed like [morning] readme, or None when unset.
+    """[jobs] tailor_rules (data, an already-loaded local_config()), placed like [morning] readme, or None when unset.
 
     Invalid values raise.
     """
@@ -359,7 +396,7 @@ def tailor_rules(data: dict | None = None) -> str | None:
 
 
 def fit_keywords(data: dict | None = None) -> tuple[str, ...]:
-    """[jobs] fit_keywords (data, as for memory_integration); empty when unset. Invalid values raise."""
+    """[jobs] fit_keywords (data, an already-loaded local_config()); empty when unset. Invalid values raise."""
     path = local_config_path()
     words = _jobs_section(path, data).get("fit_keywords", [])
     if not (isinstance(words, list) and all(isinstance(w, str) and w and w == w.strip() for w in words)):
@@ -383,7 +420,7 @@ def _place(path: Path, section: str, key: str, value: str) -> str:
 
 
 def graph_settings(data: dict | None = None) -> tuple[frozenset[str], frozenset[str]]:
-    """[graph] skip_dirs and ignore_projects (data, as for memory_integration); empty when unset.
+    """[graph] skip_dirs and ignore_projects (data, an already-loaded local_config()); empty when unset.
 
     Invalid values raise.
     """
@@ -401,7 +438,7 @@ def graph_settings(data: dict | None = None) -> tuple[frozenset[str], frozenset[
 
 
 def disabled_addons(data: dict | None = None) -> frozenset[str]:
-    """[addons] disabled (data, as for memory_integration): add-ons that stay off.
+    """[addons] disabled (data, an already-loaded local_config()): add-ons that stay off.
 
     Empty when unset. Invalid values raise.
     """
@@ -416,7 +453,7 @@ def disabled_addons(data: dict | None = None) -> frozenset[str]:
 
 
 def user_facing_projects(data: dict | None = None) -> frozenset[str]:
-    """[dashboard] user_facing (data, as for memory_integration): projects whose work reaches real users.
+    """[dashboard] user_facing (data, an already-loaded local_config()): projects whose work reaches real users.
 
     The owner keeps this list by hand; the dashboard's weekly split reads it on every
     request, so editing the file is enough. Empty when unset. Invalid values raise.
@@ -432,7 +469,7 @@ def user_facing_projects(data: dict | None = None) -> frozenset[str]:
 
 
 def owner_name(data: dict | None = None) -> str:
-    """[owner] name (data, as for memory_integration): the person the board waits on.
+    """[owner] name (data, an already-loaded local_config()): the person the board waits on.
 
     A card that needs them starts with owner_prefix(), their name in capitals and
     a colon. "Owner" when unset. Invalid values raise.

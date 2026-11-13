@@ -31,7 +31,7 @@ def reminders_group(ctx: click.Context) -> None:
     \b
     Add one (agents: this is the command):
       pt reminders add "Prompt pack" \\
-        --purpose "Run a client's work audit, then evals, skills and a schedule" \\
+        --purpose "Run a client's work audit, then evals and a schedule" \\
         --location ~/library/prompt-pack/
     """
     if ctx.invoked_subcommand is not None:

@@ -1,7 +1,7 @@
 [project]
 name = "project-tracker"
 version = "0.0.0"
-description = "Local dashboard and CLI for tracking projects, Kanban work, graph relationships, and agentic workflow signals across the projects root."
+description = "Local dashboard and CLI for tracking projects, Kanban work, and agentic workflow signals across the projects root."
 requires-python = ">=3.11"
 dependencies = [
     "click>=8.0",

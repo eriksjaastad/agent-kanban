@@ -42,6 +42,7 @@ const SUMMARY = {
   markers_error: null,
   date_range: { start: '2026-03-01', end: '2026-03-31' },
   project_id: null,
+  usage_stats: true,
 };
 
 const EMPTY_TOOL_STATS = { by_date: [], by_project: [], by_model: [], projects: [], models: [] };
@@ -101,9 +102,9 @@ describe('AgenticDashboard — load failures', () => {
     expect(screen.getByText(/Marker editing is disabled/)).toBeInTheDocument();
   });
 
-  it('shows why the brain.db charts are unavailable instead of an empty chart', async () => {
-    vi.mocked(fetchToolStats).mockRejectedValue(new Error('Cannot read /p/brain.db: no such table: tool_invocations'));
-    vi.mocked(fetchBashStats).mockRejectedValue(new Error('Cannot read /p/brain.db: no such table: bash_calls'));
+  it('shows why the store.db charts are unavailable instead of an empty chart', async () => {
+    vi.mocked(fetchToolStats).mockRejectedValue(new Error('Cannot read /p/store.db: no such table: tool_invocations'));
+    vi.mocked(fetchBashStats).mockRejectedValue(new Error('Cannot read /p/store.db: no such table: bash_calls'));
 
     render(<AgenticDashboard />, { wrapper: ProjectsProvider });
 
@@ -111,5 +112,24 @@ describe('AgenticDashboard — load failures', () => {
     expect(await screen.findByText(/no such table: bash_calls/)).toBeInTheDocument();
     expect(screen.queryByText(/No WebSearch data yet/)).not.toBeInTheDocument();
     expect(screen.queryByText(/No bash call data yet/)).not.toBeInTheDocument();
+  });
+
+  it('shows no tool or Bash charts and requests no stats when the server has none', async () => {
+    vi.mocked(fetchAgenticSummary).mockResolvedValue({ ...SUMMARY, usage_stats: false });
+
+    render(<AgenticDashboard />, { wrapper: ProjectsProvider });
+
+    expect(await screen.findByText('Workflow Markers')).toBeInTheDocument();
+    expect(screen.queryByText('WebSearch Calls Over Time')).not.toBeInTheDocument();
+    expect(fetchToolStats).not.toHaveBeenCalled();
+    expect(fetchBashStats).not.toHaveBeenCalled();
+  });
+
+  it('shows the charts and requests their stats when the server has them', async () => {
+    render(<AgenticDashboard />, { wrapper: ProjectsProvider });
+
+    expect(await screen.findByText('WebSearch Calls Over Time')).toBeInTheDocument();
+    expect(fetchToolStats).toHaveBeenCalled();
+    expect(fetchBashStats).toHaveBeenCalled();
   });
 });

@@ -3,8 +3,7 @@
 # Usage: ./pt [command]
 # Example: ./pt launch
 #
-# pt runs without Doppler: nothing in it needs a secret. `pt memory` runs
-# brain.py under the Doppler project its [memory] config names, if any.
+# pt runs without Doppler: nothing in it needs a secret.
 
 export PT_CALLER_CWD="$PWD"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-${TMPDIR:-/tmp}/pt-uv-cache}"

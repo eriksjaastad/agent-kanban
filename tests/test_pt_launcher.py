@@ -1,7 +1,6 @@
 """The `pt` launcher runs without Doppler.
 
-Nothing in `pt` needs a Doppler secret; `pt memory` wraps brain.py when its
-config names a Doppler project, and `pt launch` needs none at all. The launcher used to wrap everything in `doppler run` unless
+Nothing in `pt` needs a Doppler secret, and `pt launch` needs none at all. The launcher used to wrap everything in `doppler run` unless
 ~/projects/.turso-config.json said otherwise, so a machine without that file
 paid for (and depended on) Doppler on every call.
 """

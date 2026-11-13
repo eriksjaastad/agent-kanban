@@ -153,7 +153,7 @@ def calendar_add_cron(project, schedule, command, description):
         pt calendar add-cron project-tracker "0 7 * * *" "scripts/alert-digest.sh" \\
             --description "Daily digest"
         pt calendar add-cron my-app "0 9 * * 1" "bash scripts/render_replay.sh" \\
-            --description "Weekly brain replay render"
+            --description "Weekly report render"
     """
     db = DatabaseManager()
     project_id = _resolve_project_id(db, project)

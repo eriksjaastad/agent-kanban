@@ -406,36 +406,6 @@ def test_scan_aborts_before_writes_when_resources_registry_is_unusable(scan_env,
     assert db.get_project("proj-0")["status"] == "paused"
 
 
-@pytest.mark.parametrize("graph_section, exits", [
-    ('[graph]\nignore_projects = "a"\n', True),        # broken: the rebuild fails, and so does the scan
-    ('[graph]\nignore_projects = ["a"]\n', False),
-    ("", False),                                        # no [graph] at all
-])
-def test_a_scan_whose_graph_rebuild_fails_exits_1_and_keeps_the_old_graph(scan_env, monkeypatch, tmp_path, capsys,
-                                                                          graph_section, exits):
-    schema, pt = scan_env["schema"], scan_env["pt"]
-    schema.init_db()
-    (tmp_path / "config.toml").write_text(graph_section)
-    monkeypatch.setenv("PT_CONFIG", str(tmp_path / "config.toml"))
-    graph = tmp_path / "graph.json"
-    graph.write_text("old")
-    monkeypatch.setattr(pt, "GRAPH_PATH", graph)
-    monkeypatch.setattr(pt, "GRAPH_ANALYSIS_PATH", tmp_path / "analysis.md")
-    monkeypatch.setattr(pt, "PROJECTS_BASE_DIR", str(scan_env["base_dir"]))
-    monkeypatch.setattr(pt, "discover_projects", lambda *_args, **_kwargs: [])
-    monkeypatch.setattr(pt, "scan_health_parallel", lambda *_args, **_kwargs: {})
-    monkeypatch.setattr(pt, "parse_external_resources", lambda: {})
-
-    if exits:
-        with pytest.raises(SystemExit) as stopped:
-            pt._scan_impl(no_graph=False, dry_run=False, force=True)
-        assert stopped.value.code == 1 and "[graph]" in capsys.readouterr().out and graph.read_text() == "old"
-        pt._scan_impl(no_graph=True, dry_run=False, force=True)  # --no-graph never touches it
-    else:
-        pt._scan_impl(no_graph=False, dry_run=False, force=True)
-        assert graph.read_text() != "old"
-
-
 def test_scan_keeps_cron_jobs_added_with_add_cron(scan_env, monkeypatch):
     # #8983: the scanner never finds cron jobs, so a scan that pruned every cron
     # it was not told about wiped each `pt calendar add-cron` row (2026-04-06).

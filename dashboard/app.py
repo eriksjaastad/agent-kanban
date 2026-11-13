@@ -1,5 +1,6 @@
 """FastAPI web dashboard for project tracker."""
 
+import importlib
 import os
 import sqlite3
 import sys
@@ -44,6 +45,7 @@ from scripts.config import (
     owner_prefix,
     user_facing_projects,
 )
+from scripts.config import module_present
 from scripts.pt import rebuild_project_graph
 from scripts.utils.validation import (
     get_blocked_card_project_ids,
@@ -83,10 +85,10 @@ from dashboard.routes.tasks import (  # noqa: E402
     _extract_pattern_from_error,
     router as tasks_router,
 )
-from dashboard.routes.memory import (  # noqa: E402
+from dashboard.routes.rebuild import (  # noqa: E402
     _create_rebuild_job,
     _run_tracked_rebuild,
-    router as memory_router,
+    router as rebuild_router,
 )
 from dashboard.routes.calendar import (  # noqa: E402
     router as calendar_router,
@@ -99,7 +101,7 @@ BOARD_COLUMNS = ("Backlog", "To Do", "In Progress", "Review")
 
 @asynccontextmanager
 async def _lifespan(application: FastAPI):
-    """Lifespan handler: rebuild project graph in background after server starts."""
+    """Lifespan handler: rebuild project graph in background after server starts (when this install has one)."""
     def _rebuild():
         try:
             from scripts.pt import rebuild_project_graph
@@ -109,8 +111,8 @@ async def _lifespan(application: FastAPI):
         except Exception as e:
             logger.error(f"Background graph rebuild failed: {e}")
 
-    thread = threading.Thread(target=_rebuild, daemon=True, name="graph-rebuild")
-    thread.start()
+    if module_present("discovery.graph_builder"):
+        threading.Thread(target=_rebuild, daemon=True, name="graph-rebuild").start()
     # Only the launchd-run server pings Discord; a test client or scratch server never does.
     if os.environ.get("PT_BLOCK_PINGS") == "1":
         from dashboard import block_ping
@@ -259,13 +261,16 @@ def refresh_data():
                 db.delete_project(db_proj["id"])
                 removed += 1
 
+        refreshed = f"Refreshed {len(projects)} projects, removed {removed} stale."
+        if not module_present("discovery.graph_builder"):
+            return JSONResponse({"status": "success", "message": refreshed})
         # Rebuild project graph in background under a tracked job so the
         # frontend can poll /api/rebuild-status/{job_id} for real completion.
         job_id = _create_rebuild_job("project_graph")
         return JSONResponse(
             {
                 "status": "success",
-                "message": f"Refreshed {len(projects)} projects, removed {removed} stale. Graph rebuild started in background.",
+                "message": f"{refreshed} Graph rebuild started in background.",
                 "job_id": job_id,
             },
             background=BackgroundTask(_run_tracked_rebuild, job_id, rebuild_project_graph),
@@ -493,7 +498,21 @@ app.include_router(calendar_router)
     # validator in db.backend_calendar_manager); its ValueError becomes a 422 below.
 
 
-app.include_router(memory_router)
+app.include_router(rebuild_router)
+
+# Routers that exist only where their module's file does; a present module that fails
+# to import still raises (see scripts/commands/common.py module_present).
+OPTIONAL_ROUTERS = (
+    "dashboard.routes.memory", "dashboard.routes.project_graph", "dashboard.routes.usage_stats")
+
+
+def register_optional_routers(application: FastAPI, present=module_present) -> None:
+    for module_name in OPTIONAL_ROUTERS:
+        if present(module_name):
+            application.include_router(importlib.import_module(module_name).router)
+
+
+register_optional_routers(app)
 
 
 app.include_router(tasks_router)

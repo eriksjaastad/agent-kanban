@@ -62,14 +62,14 @@ const navigationFixture: NavigationResponse = {
       ],
     },
     {
-      id: 'group-memory',
-      label: 'Memory',
-      href: '/memory',
-      match_prefixes: ['/memory', '/graph'],
+      id: 'group-extras',
+      label: 'Extras',
+      href: '/extras',
+      match_prefixes: ['/extras', '/extras-more'],
       navigation_type: 'document',
       children: [
-        { id: 'memory', label: 'Memory', href: '/memory', match_prefixes: ['/memory'], navigation_type: 'document' },
-        { id: 'graph', label: 'Graph', href: '/graph', match_prefixes: ['/graph'], navigation_type: 'document' },
+        { id: 'extras', label: 'Extras', href: '/extras', match_prefixes: ['/extras'], navigation_type: 'document' },
+        { id: 'extras-more', label: 'More', href: '/extras-more', match_prefixes: ['/extras-more'], navigation_type: 'document' },
       ],
     },
   ],
@@ -111,7 +111,7 @@ describe('Navigation', () => {
       'Kanban',
       'Jobs',
       'Agents',
-      'Memory',
+      'Extras',
     ]);
   });
 

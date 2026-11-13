@@ -239,25 +239,6 @@ def test_every_write_route_is_serialized():
     assert missing == []
 
 
-def test_background_graph_rebuild_does_not_hold_the_write_lock(live_server, monkeypatch, tmp_path):
-    """/api/refresh answers, then rebuilds the graph in a background task; that
-    rebuild must not stall other writes (main ran it in parallel)."""
-    monkeypatch.setattr(dashboard_app, "discover_projects", lambda: [])
-    monkeypatch.setattr(dashboard_app, "rebuild_project_graph", _slow(None))
-    monkeypatch.setattr(agentic_routes, "MARKERS_PATH", tmp_path / "markers.json")
-
-    assert httpx.post(f"{live_server}/api/refresh", timeout=10).status_code == 200
-    started = time.monotonic()
-    response = httpx.post(
-        f"{live_server}/api/agentic/markers",
-        json={"date": "2026-10-01", "label": "after refresh"},
-        timeout=10,
-    )
-    elapsed = time.monotonic() - started
-    assert response.status_code == 201
-    assert elapsed < HEALTH_BUDGET_SECONDS, f"write waited {elapsed:.2f}s behind the rebuild"
-
-
 def test_a_stalled_upload_body_does_not_block_other_writes(live_server, monkeypatch, tmp_path):
     """The body is parsed before the handler runs, so a client that stops
     sending mid-upload holds no lock."""

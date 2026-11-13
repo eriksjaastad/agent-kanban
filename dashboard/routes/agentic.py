@@ -1,23 +1,21 @@
-"""The /agentic page's API: summary, timeline markers and tool/bash stats."""
+"""The /agentic page's API: summary and timeline markers."""
 
 import json
 import re
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Optional
 
 from db.manager import DatabaseManager
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
-from dashboard.brain_stats import BrainStatsUnavailable, bash_stats, tool_stats
 from dashboard.common import (
     MARKERS_PATH,
-    _memory_off_message,
-    _memory_store,
     _serialized,
     logger,
 )
+from scripts.config import module_present
 
 router = APIRouter()
 
@@ -93,6 +91,8 @@ def agentic_summary(days: int = 30, project_id: Optional[str] = None):
             "markers_error": markers_error,
             "date_range": {"start": start_date.isoformat(), "end": end_date.isoformat()},
             "project_id": project_id,
+            # The page draws its tool and Bash charts only when their routes are installed.
+            "usage_stats": module_present("dashboard.routes.usage_stats"),
         }
     except Exception as e:
         logger.error(f"Error building agentic summary: {e}", exc_info=True)
@@ -247,31 +247,3 @@ def delete_marker(marker_id: str):
         raise HTTPException(status_code=404, detail="Marker not found")
     _save_markers(updated)
     return None
-
-
-def _brain_stats(read, *args):
-    """Run one dashboard.brain_stats reader; an unreadable brain.db is a 503 with the cause.
-
-    The window ends today in UTC, the day the memory store stamps on each call.
-    """
-    store = _memory_store()
-    if store is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_memory_off_message())
-    brain_db = store.brain_db
-    try:
-        return read(brain_db, datetime.now(timezone.utc).date(), *args)
-    except BrainStatsUnavailable as exc:
-        logger.error("%s", exc)
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
-
-
-@router.get("/api/tool-stats")
-def get_tool_stats(tool: str = "WebSearch", days: int = 30, model: Optional[str] = None):
-    """Calls of one tool per day for the /agentic chart (see brain_stats.tool_stats)."""
-    return _brain_stats(tool_stats, tool, days, model)
-
-
-@router.get("/api/bash-stats")
-def get_bash_stats(days: int = 30):
-    """Bash error rate per day for the /agentic chart (see brain_stats.bash_stats)."""
-    return _brain_stats(bash_stats, days)

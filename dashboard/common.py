@@ -1,6 +1,7 @@
 """Helpers every dashboard route area shares: logging, write serialization, admin and memory-store guards, display IDs, page shells, navigation."""
 
 import asyncio
+import copy
 import functools
 import json
 import os
@@ -20,6 +21,7 @@ from scripts.config import (
     MemoryIntegration,
     local_config_path,
     memory_integration,
+    module_present,
 )
 from scripts.logger import get_logger
 
@@ -108,7 +110,7 @@ NAVIGATION_TITLE = "Project Tracker"
 # enabled add-on's entries in add-on name order.
 # Each leaf keeps its original id/href/match_prefixes/navigation_type; only some labels
 # changed when the leaves moved inside a group (#7637).
-NAVIGATION_ITEMS = [
+ALL_NAVIGATION_ITEMS = [
     {
         "id": "morning",
         "label": "Morning",
@@ -204,6 +206,7 @@ NAVIGATION_ITEMS = [
                 "id": "memory",
                 "label": "Memory",
                 "href": "/memory",
+                "requires": "dashboard.routes.memory",
                 "match_prefixes": ["/memory"],
                 "navigation_type": "document",
             },
@@ -212,6 +215,7 @@ NAVIGATION_ITEMS = [
                 "label": "Graph",
                 "solo_label": "Memory Graph",
                 "href": "/graph",
+                "requires": "dashboard.routes.project_graph",
                 "match_prefixes": ["/graph"],
                 "navigation_type": "document",
             },
@@ -255,8 +259,23 @@ def collapse_navigation(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return collapsed
 
 
+def drop_absent_entries(items: List[Dict[str, Any]], present=module_present) -> List[Dict[str, Any]]:
+    """Leave out each entry whose "requires" module file is missing from this install."""
+    kept = []
+    for item in items:
+        required = item.get("requires")
+        if required is not None and not present(required):
+            continue
+        item = {key: value for key, value in item.items() if key != "requires"}
+        if "children" in item:
+            item["children"] = drop_absent_entries(item["children"], present)
+        kept.append(item)
+    return kept
+
+
+NAVIGATION_ITEMS = copy.deepcopy(ALL_NAVIGATION_ITEMS)
 add_addon_navigation(NAVIGATION_ITEMS, [entry for addon in enabled_addons() for entry in addon.nav])
-NAVIGATION_ITEMS = collapse_navigation(NAVIGATION_ITEMS)
+NAVIGATION_ITEMS = collapse_navigation(drop_absent_entries(NAVIGATION_ITEMS))
 
 
 def is_navigation_item_active(item: Dict[str, object], path: str) -> bool:

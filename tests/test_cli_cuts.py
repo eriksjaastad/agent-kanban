@@ -166,9 +166,3 @@ def test_cwd_detection_names_the_directory_when_the_name_is_shared(db, tmp_path,
     assert result.exit_code == 2
     assert "Can't tell the project from directory 'dup'" in result.output
     assert "Pass -p <id>" in result.output
-
-
-def test_graph_keeps_its_live_wrappers_and_drops_the_three_memory_store_cut() -> None:
-    """ai-metrics removed `brain.py graph communities|wiki|extract-upgrade`
-    (the owner's item-6 mark); pt keeps every other graph wrapper (mark 46)."""
-    assert set(pt.graph_group.commands) == {"build", "export", "find", "path", "query", "stats"}

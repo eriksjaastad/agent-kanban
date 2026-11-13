@@ -167,6 +167,7 @@ export interface AgenticSummaryResponse {
   series: AgenticSeriesEntry[];
   markers: AgenticMarker[];
   markers_error?: string | null;
+  usage_stats?: boolean;
   date_range: {
     start: string;
     end: string;

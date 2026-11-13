@@ -2,6 +2,7 @@
 
 import json
 import logging
+import subprocess
 from datetime import datetime, timedelta
 
 import pytest
@@ -58,25 +59,89 @@ def test_a_failed_send_is_logged_once_and_not_retried(sent, caplog):
     assert json.loads(path.read_text()) == [f"7@{START.isoformat()}"]
 
 
-def test_post_sends_the_text_as_discord_content(monkeypatch):
-    seen = {}
+CONFIG = ('[discord]\nchannel_id = "4242"\ndoppler_project = "bots"\ndoppler_config = "prd"\n'
+          'token_secret = "BOT_TOKEN"\n')
+TOKEN = "s3cret-token-value"
 
-    class Response:
-        def __enter__(self):
-            return self
 
-        def __exit__(self, *exc):
-            return False
+class Reply:
+    def __init__(self, status=200, body=None):
+        self.status = status
+        self._body = json.dumps({"id": "9", "channel_id": "4242"} if body is None else body).encode()
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+@pytest.fixture
+def discord(tmp_path, monkeypatch):
+    """A [discord] config, a stubbed Doppler and a stubbed urlopen: no real network or Doppler."""
+    (tmp_path / "c.toml").write_text(CONFIG)
+    monkeypatch.setenv("PT_CONFIG", str(tmp_path / "c.toml"))
+    seen = {"doppler": [], "requests": [], "reply": Reply()}
+
+    def run(command, **kwargs):
+        seen["doppler"].append(command)
+        return subprocess.CompletedProcess(command, 0, stdout=TOKEN + "\n")
 
     def urlopen(request, timeout):
-        seen.update(url=request.full_url, body=json.loads(request.data), method=request.get_method())
-        return Response()
+        seen["requests"].append(request)
+        return seen["reply"]
 
-    monkeypatch.setattr(block_ping, "webhook", lambda: "https://discord.test/api/webhooks/1/x")
+    monkeypatch.setattr(block_ping.subprocess, "run", run)
     monkeypatch.setattr(block_ping.urllib.request, "urlopen", urlopen)
+    return seen
+
+
+def test_post_goes_through_the_bot_to_the_configured_channel(discord):
     block_ping.post("Deep work now, until 10:30")
-    assert seen == {"url": "https://discord.test/api/webhooks/1/x",
-                    "body": {"content": "Deep work now, until 10:30"}, "method": "POST"}
+    (request,) = discord["requests"]
+    assert request.full_url == "https://discord.com/api/v10/channels/4242/messages"
+    assert request.get_method() == "POST"
+    assert request.get_header("Authorization") == f"Bot {TOKEN}"
+    assert request.get_header("User-agent").startswith("DiscordBot (")
+    assert json.loads(request.data) == {"content": "Deep work now, until 10:30",
+                                        "allowed_mentions": {"parse": []}}
+    assert discord["doppler"] == [["doppler", "secrets", "get", "BOT_TOKEN", "--plain",
+                                   "--project", "bots", "--config", "prd"]]
+
+
+@pytest.mark.parametrize("reply", [
+    Reply(204, {}), Reply(200, {"channel_id": "4242"}), Reply(200, {"id": "9", "channel_id": "other"}),
+    Reply(200, []), Reply(200, "not an object"),
+])
+def test_an_unconfirmed_response_raises(discord, reply):
+    discord["reply"] = reply
+    with pytest.raises(RuntimeError, match="did not confirm"):
+        block_ping.post("x")
+
+
+def test_an_unconfigured_discord_says_how_to_turn_it_on(tmp_path, monkeypatch):
+    monkeypatch.setenv("PT_CONFIG", str(tmp_path / "none.toml"))
+    with pytest.raises(RuntimeError, match=r"Discord is not configured: add a \[discord\] section"):
+        block_ping.post("x")
+
+
+def test_the_token_never_reaches_an_error_or_a_log(discord, monkeypatch, caplog, sent):
+    def failing(command, **kwargs):
+        raise subprocess.CalledProcessError(2, command, output=TOKEN, stderr=TOKEN)
+
+    monkeypatch.setattr(block_ping.subprocess, "run", failing)
+    with pytest.raises(RuntimeError) as raised:
+        block_ping.post("x")
+    assert TOKEN not in str(raised.value) and raised.value.__cause__ is None
+    discord["reply"] = Reply(500, {"message": TOKEN})
+    monkeypatch.setattr(block_ping.subprocess, "run",
+                        lambda c, **k: subprocess.CompletedProcess(c, 0, stdout=TOKEN))
+    with caplog.at_level(logging.ERROR):
+        block_ping.check(START, _block(), block_ping.post, sent[1])
+    assert "did not confirm" in caplog.text and TOKEN not in caplog.text
 
 
 @pytest.mark.parametrize("flag, started", [(None, 0), ("1", 1)])

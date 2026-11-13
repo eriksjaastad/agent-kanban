@@ -95,28 +95,6 @@ def isolated_database(tmp_path, monkeypatch, _template):
     return target
 
 @pytest.fixture
-def memory_store(tmp_path, monkeypatch):
-    """Turn on the memory integration with its store at tmp_path/"memory-store".
-
-    Writes the test's own local config (scripts/config.py [memory]) and returns
-    a writer; call it with extra [memory] keys to rewrite the config.
-    """
-    root = tmp_path / "memory-store"
-    root.mkdir(exist_ok=True)
-
-    def configure(**extra):
-        lines = [f'root = "{root}"'] + [f'{key} = "{value}"' for key, value in extra.items()]
-        path = tmp_path / "_local" / "config.toml"
-        path.write_text("[memory]\n" + "\n".join(lines) + "\n", encoding="utf-8")
-        monkeypatch.setenv("PT_CONFIG", str(path))
-        return root
-
-    configure()
-    configure.root = root
-    return configure
-
-
-@pytest.fixture
 def db(isolated_database):
     from db.manager import DatabaseManager
     return DatabaseManager()

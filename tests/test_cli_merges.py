@@ -130,14 +130,10 @@ def test_help_unknown_command_is_a_usage_error() -> None:
 # --- usage lives in --help ----------------------------------------------------
 
 def test_hygiene_and_scan_help_carry_their_usage_contract() -> None:
-    """The hygiene and memory JSON contracts and scan usage live in --help."""
+    """The hygiene JSON contract and scan usage live in --help."""
     hygiene_help = CliRunner().invoke(pt.cli, ["hygiene", "--help"]).output
     for needle in ("Read-only", "pt.hygiene.v2", "exit 6", '"error"', "findings"):
         assert needle in hygiene_help, needle
-    # Click rewraps help to the terminal width, so match on collapsed whitespace.
-    memory_help = " ".join(CliRunner().invoke(pt.cli, ["memory", "--help"]).output.split())
-    for needle in ("schema_version", "read_only", "NDJSON", "exit 2", "Option parsing errors"):
-        assert needle in memory_help, needle
     assert "sync-project" in CliRunner().invoke(pt.cli, ["scan", "--help"]).output
 
 

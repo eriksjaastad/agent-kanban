@@ -1,4 +1,4 @@
-"""`pt tasks` and `pt memory` exit non-zero when they did not do what was asked.
+"""`pt tasks` exits non-zero when they did not do what was asked.
 
 Found by the #8093 survey: transitions printed "Failed ..." / "not found" /
 "blocked" and exited 0, so scripts and agents read a refused card move (for
@@ -15,7 +15,6 @@ from click.testing import CliRunner
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 import pt  # noqa: E402
-from commands import memory as memory_commands  # noqa: E402
 from db.manager import DatabaseManager  # noqa: E402
 from db.schema import create_database  # noqa: E402
 from pt import tasks_group  # noqa: E402
@@ -104,27 +103,6 @@ def test_delete_unknown_card_exits_one_but_declining_is_not_a_failure(db) -> Non
     result = CliRunner().invoke(tasks_group, ["delete", str(task["id"])], input="n\n")
     assert result.exit_code == 0
     assert db.get_task(task["id"]) is not None
-
-
-@pytest.mark.parametrize("returncode", [0, 3])
-def test_run_brain_passes_brain_py_exit_code_on(monkeypatch, tmp_path: Path, returncode: int) -> None:
-    (tmp_path / "brain.py").write_text("")
-    config = tmp_path / "config.toml"
-    config.write_text(f'[memory]\nroot = "{tmp_path}"\n')
-    monkeypatch.setenv("PT_CONFIG", str(config))
-    monkeypatch.setattr(shutil, "which", lambda name: f"/usr/bin/{name}")
-
-    class Done:
-        def __init__(self, code):
-            self.returncode = code
-
-    monkeypatch.setattr(pt.subprocess, "run", lambda cmd, check, cwd: Done(returncode))
-    if returncode == 0:
-        memory_commands._run_brain("stats")
-    else:
-        with pytest.raises(SystemExit) as exc:
-            memory_commands._run_brain("stats")
-        assert exc.value.code == returncode
 
 
 def test_an_exception_while_changing_a_card_exits_one(db, monkeypatch) -> None:

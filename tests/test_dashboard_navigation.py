@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from dashboard import common
 from dashboard.app import app
 from dashboard.common import build_navigation, build_spa_shell_html, iter_navigation_leaves
 from scripts.addon_registry import enabled as enabled_addons
@@ -51,15 +52,12 @@ def test_navigation_api_returns_shared_contract():
 
     def added_to(group_id):
         return [entry["id"] for entry in addon_nav if entry.get("group") == group_id]
-    assert [item["id"] for item in items] == [
-        "morning",
-        "dashboard",
-        "group-kanban",
-        "group-jobs",
-        "group-agents",
-        "group-memory",
-        *addon_ids,
-    ]
+    core_ids = ["morning", "dashboard", "group-kanban", "group-jobs", "group-agents"]
+    # Optional pages (those whose module file may be absent) sit between the core and the add-ons.
+    optional_ids = {item["id"] for item in common.ALL_NAVIGATION_ITEMS} - set(core_ids)
+    ids = [item["id"] for item in items]
+    assert ids[:len(core_ids)] == core_ids and ids[len(ids) - len(addon_ids):] == addon_ids
+    assert set(ids[len(core_ids):len(ids) - len(addon_ids)]) <= optional_ids
     assert items[0]["href"] == "/morning"
     assert items[0]["navigation_type"] == "spa"
 
@@ -71,7 +69,6 @@ def test_navigation_api_returns_shared_contract():
     assert children_by_group["group-jobs"] == [
         "jobs", "jobs-submitted", "jobs-volunteer", *added_to("group-jobs")]
     assert children_by_group["group-agents"] == ["agent-chat", "agentic", *added_to("group-agents")]
-    assert children_by_group["group-memory"] == ["memory", "graph", *added_to("group-memory")]
 
     for group in items:
         if not group["id"].startswith("group-"):
@@ -93,8 +90,6 @@ def test_navigation_api_returns_shared_contract():
     assert leaves["jobs-volunteer"]["label"] == "Volunteer"
     assert leaves["agent-chat"]["label"] == "Chat"
     assert leaves["agentic"]["label"] == "Autonomy"
-    assert leaves["memory"]["label"] == "Memory"
-    assert leaves["graph"]["label"] == "Graph"
 
 
 def test_build_navigation_marks_expected_active_items():
@@ -113,7 +108,6 @@ def test_child_paths_activate_only_the_matching_group_and_child():
         "/jobs/submitted": {"group-jobs", "jobs-submitted"},
         "/jobs/volunteer": {"group-jobs", "jobs-volunteer"},
         "/kanban/project-tracker": {"group-kanban", "kanban"},
-        "/graph": {"group-memory", "graph"},
     }
     for path, expected_ids in cases.items():
         assert active_ids(build_navigation(path)) == expected_ids, path
@@ -121,42 +115,6 @@ def test_child_paths_activate_only_the_matching_group_and_child():
 
 def test_project_path_still_activates_dashboard():
     assert active_ids(build_navigation("/project/project-tracker")) == {"dashboard"}
-
-
-def test_graph_view_renders_shared_shell_navigation():
-    response = client.get("/graph")
-
-    assert response.status_code == 200
-    body = response.text
-    assert "Project Tracker" in body
-    assert "Morning" in body
-    assert "Dashboard" in body
-    assert "Kanban" in body
-    assert "Jobs" in body
-    assert "Agents" in body
-    assert "Memory" in body
-    assert 'href="/jobs/submitted"' in body
-    assert "Board" in body
-    assert "Calendar" in body
-    assert "Listings" in body
-    assert "Submissions" in body
-    assert "Chat" in body
-    assert "Autonomy" in body
-    assert "Code reviews" not in body
-    assert "Graph" in body
-    assert "Project Graph" in body
-
-    # The Jinja nav mirrors the React nav: a real caret button per group,
-    # menu roles, and the JS that makes menus touch-openable.
-    assert (
-        '<button type="button" class="nav-caret" aria-haspopup="true" '
-        'aria-expanded="false" aria-label="Jobs menu">' in body
-    )
-    assert 'role="menu"' in body
-    assert '<script src="/static/nav.js" defer></script>' in body
-
-    nav_js = client.get("/static/nav.js")
-    assert nav_js.status_code == 200
 
 
 def test_build_spa_shell_html_bootstraps_backend_navigation_payload():
@@ -202,9 +160,7 @@ def test_dead_dashboard_endpoints_are_no_longer_served():
     # Integer ids still reach the task handler rather than the router's 404.
     integer = client.get("/api/tasks/999999999")
     assert not (integer.status_code == 404 and integer.json().get("detail") == "Not Found")
-    # /api/refresh is the one legacy action that stays; the Memory and Graph pages too.
-    assert client.get("/memory").status_code == 200
-    assert client.get("/graph").status_code == 200
+    # /api/refresh is the one legacy action that stays.
 
 
 def test_no_dropdown_ever_has_one_item():
@@ -242,5 +198,3 @@ def test_a_promoted_item_is_a_plain_tab_in_both_menus(monkeypatch):
     assert (chat["label"], chat["href"], "children" in chat) == ("Agent Chat", "/agent-chat", False)
     assert not any(item["id"] == "group-agents" for item in nav)
     assert leaf_by_id(common.build_navigation("/agent-chat"), "agent-chat")["active"]
-    page = client.get("/graph").text
-    assert 'href="/agent-chat"' in page and "Agent Chat" in page
